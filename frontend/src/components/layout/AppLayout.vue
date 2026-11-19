@@ -1,5 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-dark-950">
+  <main v-if="!isAdmin" class="min-h-screen bg-gray-50 p-4 dark:bg-dark-950"><slot /></main>
+  <div v-else class="min-h-screen bg-gray-50 dark:bg-dark-950">
     <!-- Background Decoration -->
     <div class="pointer-events-none fixed inset-0 bg-mesh-gradient"></div>
 
@@ -39,7 +40,7 @@ const isAdmin = computed(() => authStore.user?.role === 'admin')
 
 const { replayTour } = useOnboardingTour({
   storageKey: isAdmin.value ? 'admin_guide' : 'user_guide',
-  autoStart: true
+  autoStart: isAdmin.value
 })
 
 const onboardingStore = useOnboardingStore()

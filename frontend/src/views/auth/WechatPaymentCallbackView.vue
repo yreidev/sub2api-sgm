@@ -25,13 +25,13 @@
           <p class="text-sm text-gray-700 dark:text-gray-300">
             {{ errorMessage }}
           </p>
-          <button
+          <HeroButton variant="primary"
             class="btn btn-primary mt-4"
             type="button"
-            @click="goBackToPayment"
+            @press="goBackToPayment"
           >
             {{ backToPaymentText }}
-          </button>
+          </HeroButton>
         </div>
       </div>
     </div>
@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'

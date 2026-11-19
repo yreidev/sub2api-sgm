@@ -1,9 +1,40 @@
 <template>
-  <AppLayout>
-    <div class="mx-auto max-w-4xl space-y-6">
-      <div v-if="loading" class="flex items-center justify-center py-20">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+  <component :is="inlineRecharge ? 'div' : AppLayout">
+    <div class="mx-auto max-w-4xl" :class="inlineRecharge ? 'sgm-assistant-checkout max-w-none space-y-4' : 'space-y-6'">
+      <div v-if="inlineRecharge && uncertainOrder && !submitting && paymentPhase === 'select'" class="space-y-2">
+        <HeroPaymentMessage warning :text="t('dashboard.assistantSetup.checkBeforeRetry')" />
+        <div class="flex flex-wrap gap-2">
+          <HeroPaymentControl :label="t('dashboard.assistantSetup.checkOrder')" :disabled="checkingOrders" @press="checkOrders(0, orderPage)" />
+          <HeroPaymentControl v-if="recentOrders" :label="t('dashboard.assistantSetup.checkedOrder')" @press="setOrderUncertain(false)" />
+        </div>
+        <p v-if="checkingOrders" role="status">{{ t('common.loading') }}</p>
+        <p v-else-if="ordersError" role="alert">{{ t('dashboard.assistantSetup.orderLookupFailed') }}</p>
+        <template v-else-if="recentOrders">
+          <p v-if="!recentOrders.items.length">{{ t('payment.orders.empty') }}</p>
+          <ul v-else :aria-label="t('payment.orders.title')" class="space-y-2">
+            <li v-for="order in recentOrders.items" :key="order.id" class="flex flex-wrap items-center gap-2 text-sm">
+              <span class="break-all">{{ order.out_trade_no || '#' + order.id }}</span>
+              <time :datetime="order.created_at">{{ formatDateTimeToMinute(order.created_at, localeCode) }}</time>
+              <span>{{ formatPaymentAmount(order.pay_amount, order.currency, localeCode, 'code') }}</span>
+              <OrderStatusBadge :status="order.status" :paid-at="order.paid_at" />
+              <span v-if="order.paid_at">{{ t('dashboard.assistantSetup.orderPaidAt', { time: formatDateTimeToMinute(order.paid_at, localeCode) }) }}</span>
+            </li>
+          </ul>
+          <nav v-if="recentOrders.pages > 1" :aria-label="t('payment.orders.title')" class="flex flex-wrap items-center gap-3">
+            <HeroPaymentControl :label="t('pagination.previous')" :disabled="orderPage <= 1" @press="checkOrders(0, orderPage - 1)" />
+            <span>{{ t('pagination.pageOf', { page: orderPage, total: recentOrders.pages }) }}</span>
+            <HeroPaymentControl :label="t('pagination.next')" :disabled="orderPage >= recentOrders.pages" @press="checkOrders(0, orderPage + 1)" />
+          </nav>
+        </template>
       </div>
+      <div v-if="loading" class="flex items-center justify-center py-20">
+        <HeroPaymentMessage v-if="inlineRecharge" loading :text="t('common.loading')" />
+        <div v-else class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+      </div>
+      <HeroPaymentPanel v-else-if="checkoutFailure">
+        <p v-if="checkoutFailure === 'order'" role="alert">{{ t('dashboard.assistantSetup.orderLookupFailed') }}</p>
+        <HeroPaymentControl :label="t(checkoutFailure === 'order' ? 'dashboard.assistantSetup.checkOrder' : 'dashboard.assistantSetup.retryCheckout')" @press="loadCheckout" />
+      </HeroPaymentPanel>
       <template v-else>
         <!-- Tab Switcher (hide during payment and subscription confirm) -->
         <div v-if="tabs.length > 1 && paymentPhase === 'select' && !selectedPlan" class="flex space-x-1 rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
@@ -16,6 +47,10 @@
         <template v-if="paymentPhase === 'paying'">
           <PaymentStatusPanel
             :order-id="paymentState.orderId"
+            :wait-for-credit="inlineRecharge"
+            :hero="inlineRecharge"
+            :initial-settlement="initialSettlement"
+            :initially-refunded="initiallyRefunded"
             :amount="paymentState.amount"
             :pay-amount="paymentState.payAmount"
             :qr-code="paymentState.qrCode"
@@ -27,93 +62,141 @@
             :out-trade-no="paymentState.outTradeNo"
             :mobile-alipay-deep-link="paymentState.alipayMobilePrecreateDeepLink"
             @done="onPaymentDone"
-            @success="onPaymentSuccess"
             @settled="onPaymentSettled"
           />
         </template>
         <!-- Tab content (select phase) -->
         <template v-else>
           <!-- Neither top-up nor subscriptions available (balance recharge disabled via API while subscriptions are off) -->
-          <div v-if="tabs.length === 0" class="card py-16 text-center">
+          <HeroPaymentMessage v-if="tabs.length === 0 && inlineRecharge" warning :text="t('payment.billingUnavailable')" />
+          <div v-else-if="tabs.length === 0" class="card py-16 text-center">
             <p class="text-gray-500 dark:text-gray-400">{{ t('payment.billingUnavailable') }}</p>
           </div>
           <!-- Top-up Tab -->
           <template v-else-if="activeTab === 'recharge'">
             <!-- Recharge Account Card -->
-            <div class="card p-5">
+            <div v-if="!inlineRecharge" class="card p-5">
               <p class="text-xs font-medium text-gray-400 dark:text-gray-500">{{ t('payment.rechargeAccount') }}</p>
               <p class="mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ user?.username || '' }}</p>
               <p class="mt-0.5 text-sm font-medium text-green-600 dark:text-green-400">{{ t('payment.currentBalance') }}: {{ user?.balance?.toFixed(2) || '0.00' }}</p>
             </div>
-            <div v-if="enabledMethods.length === 0" class="card py-16 text-center">
+            <HeroPaymentMessage v-if="enabledMethods.length === 0 && inlineRecharge" warning :text="t('payment.notAvailable')" />
+            <div v-else-if="enabledMethods.length === 0" class="card py-16 text-center">
               <p class="text-gray-500 dark:text-gray-400">{{ t('payment.notAvailable') }}</p>
             </div>
             <template v-else>
-            <div class="card p-6">
-              <!-- 充值赠送活动文案（后台 Markdown 配置，空则不渲染） -->
-              <div
-                v-if="renderedBonusNotice"
-                class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100 [&_a]:font-medium [&_a]:underline [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:my-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_p]:my-1 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:ml-5 [&_ul]:list-disc"
-                data-testid="recharge-bonus-notice"
-                v-html="renderedBonusNotice"
-              ></div>
-              <AmountInput
-                v-model="amount"
-                :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
-                :min="globalMinAmount"
-                :max="globalMaxAmount"
-                :bonus-tiers="rechargeBonusTiers"
-                :bonus-mode="rechargeBonusMode"
-                :multiplier="balanceRechargeMultiplier"
-                :currency="selectedCurrency"
-              />
-              <p v-if="amountError" class="mt-2 text-xs text-amber-600 dark:text-amber-300">{{ amountError }}</p>
-            </div>
-            <div v-if="enabledMethods.length >= 1" class="card p-6">
-              <PaymentMethodSelector
-                :methods="methodOptions"
-                :selected="selectedMethod"
-                @select="selectedMethod = $event"
-              />
-            </div>
-            <div v-if="validAmount > 0" class="card p-6">
-              <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.paymentAmount') }}</span>
-                  <span :class="discountAmount > 0 ? 'text-gray-400 line-through dark:text-gray-500' : 'text-gray-900 dark:text-white'">{{ formatSelectedPaymentAmount(validAmount) }}</span>
-                </div>
-                <div v-if="discountAmount > 0" class="flex justify-between" data-testid="recharge-discount-row">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.rechargeBonus.discountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
-                  <span class="font-medium text-red-600 dark:text-red-400">-{{ formatSelectedPaymentAmount(discountAmount) }}</span>
-                </div>
-                <div v-if="feeRate > 0" class="flex justify-between">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
-                  <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
-                </div>
-                <div v-if="showActualPay" class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
-                  <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
-                  <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
-                </div>
-                <div v-if="showBonusRow" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': !showActualPay }" data-testid="recharge-bonus-row">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.rechargeBonus.amountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
-                  <span class="font-medium text-red-600 dark:text-red-400">+${{ bonusQuote.bonus.toFixed(2) }}</span>
-                </div>
-                <div v-if="showCreditedBalance" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': !showActualPay && !showBonusRow }" data-testid="recharge-credited-row">
-                  <span class="text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</span>
-                  <span :class="bonusQuote.percent > 0 ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'">${{ creditedAmount.toFixed(2) }}</span>
-                </div>
-                <p v-if="balanceRechargeMultiplier !== 1" class="border-t border-gray-200 pt-2 text-xs text-gray-500 dark:border-dark-600 dark:text-gray-400">
-                  {{ t('payment.rechargeRatePreview', { currency: selectedCurrency, usd: formatBalanceRechargeMultiplier(balanceRechargeMultiplier) }) }}
+              <header v-if="inlineRecharge" class="sgm-checkout-heading">
+                <p class="text-sm text-gray-600 dark:text-gray-300">
+                  {{ t('dashboard.assistantSetup.rechargeCurrencies', { payment: selectedCurrency === 'CNY' ? t('dashboard.assistantSetup.cnyLabel') : selectedCurrency, balance: t('dashboard.assistantSetup.usdLabel') }) }}
                 </p>
+                <HeroPaymentMessage v-if="isCheckoutPreview" class="sgm-preview-notice" :text="t('dashboard.assistantSetup.rechargePreview')" />
+              </header>
+              <div :class="inlineRecharge ? 'sgm-checkout-layout' : 'space-y-6'">
+                <component :is="inlineRecharge ? HeroPaymentPanel : 'div'" :class="inlineRecharge ? undefined : 'card p-4 sm:p-6'">
+                  <HeroPaymentMessage v-if="inlineRecharge" class="sgm-checkout-step mb-4" :step="1" :heading="t('dashboard.assistantSetup.rechargeStepAmount')" :text="t('dashboard.assistantSetup.rechargeAmountHint')" />
+                  <!-- 充值赠送活动文案（后台 Markdown 配置，空则不渲染） -->
+                  <HeroPaymentMessage v-if="inlineRecharge && renderedBonusNotice" class="mb-4" warning :sanitized-html="renderedBonusNotice" data-testid="recharge-bonus-notice" />
+                  <div
+                    v-else-if="renderedBonusNotice"
+                    class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100 [&_a]:font-medium [&_a]:underline [&_h1]:text-base [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:text-sm [&_h3]:font-semibold [&_ol]:my-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_p]:my-1 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:ml-5 [&_ul]:list-disc"
+                    data-testid="recharge-bonus-notice"
+                    v-html="renderedBonusNotice"
+                  ></div>
+                  <AmountInput
+                    v-model="amount"
+                    :inline="inlineRecharge"
+                    :amounts="[10, 20, 50, 100, 200, 500, 1000, 2000, 5000]"
+                    :min="globalMinAmount"
+                    :max="globalMaxAmount"
+                    :bonus-tiers="rechargeBonusTiers"
+                    :bonus-mode="rechargeBonusMode"
+                    :multiplier="balanceRechargeMultiplier"
+                    :currency="selectedCurrency"
+                    :error="amountError"
+                  />
+                </component>
+                <component :is="inlineRecharge ? HeroPaymentPanel : 'div'" :class="{ 'sgm-checkout-summary': inlineRecharge }">
+                  <div :class="inlineRecharge ? 'space-y-4' : 'space-y-6'">
+                    <div v-if="enabledMethods.length >= 1" :class="inlineRecharge ? '' : 'card p-4 sm:p-6'">
+                      <HeroPaymentMessage v-if="inlineRecharge" class="sgm-checkout-step mb-3" :step="2" :heading="t('dashboard.assistantSetup.rechargeStepMethod')" :text="t('dashboard.assistantSetup.rechargeMethodHint')" />
+                      <PaymentMethodSelector
+                        :methods="methodOptions"
+                        :inline="inlineRecharge"
+                        :selected="selectedMethod"
+                        @select="selectedMethod = $event"
+                      />
+                    </div>
+                    <div v-if="validAmount > 0 || inlineRecharge" :class="inlineRecharge ? 'sgm-checkout-totals' : 'card p-4 sm:p-6'" aria-live="polite">
+                      <div v-if="inlineRecharge" class="space-y-3">
+                        <HeroPaymentMessage class="sgm-checkout-step" :step="3" :heading="t('dashboard.assistantSetup.rechargeStepReview')" :text="t(validAmount > 0 ? 'dashboard.assistantSetup.rechargeReviewHint' : 'dashboard.assistantSetup.rechargeSelectFirst')" />
+                        <div class="sgm-checkout-pay flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                          <span>{{ t('payment.actualPay') }}</span>
+                          <strong class="tabular-nums" data-testid="recharge-pay-row">{{ validAmount > 0 ? formatPaymentAmount(totalAmount, selectedCurrency, localeCode, 'code') : '—' }}</strong>
+                        </div>
+                        <div v-if="validAmount > 0 && showBonusRow" class="sgm-checkout-bonus flex flex-wrap justify-between gap-2 text-sm" data-testid="recharge-bonus-row">
+                          <span>{{ t('payment.rechargeBonus.amountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
+                          <span class="tabular-nums">+{{ formatPaymentAmount(bonusQuote.bonus, 'USD', localeCode, 'code') }}</span>
+                        </div>
+                        <div v-if="validAmount > 0 && feeRate > 0" class="flex flex-wrap justify-between gap-2 text-sm">
+                          <span>{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                          <span class="tabular-nums">{{ formatPaymentAmount(feeAmount, selectedCurrency, localeCode, 'code') }}</span>
+                        </div>
+                        <div class="sgm-checkout-credit flex flex-wrap justify-between gap-2 text-sm" data-testid="recharge-credited-row">
+                          <span>{{ t('payment.creditedBalance') }}</span>
+                          <strong class="tabular-nums">{{ validAmount > 0 ? formatPaymentAmount(creditedAmount, 'USD', localeCode, 'code') : '—' }}</strong>
+                        </div>
+                      </div>
+                      <div v-else class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                          <span class="text-gray-500 dark:text-gray-400">{{ t('payment.paymentAmount') }}</span>
+                          <span :class="discountAmount > 0 ? 'text-gray-400 line-through dark:text-gray-500' : 'text-gray-900 dark:text-white'">{{ formatSelectedPaymentAmount(validAmount) }}</span>
+                        </div>
+                        <div v-if="discountAmount > 0" class="flex justify-between" data-testid="recharge-discount-row">
+                          <span class="text-gray-500 dark:text-gray-400">{{ t('payment.rechargeBonus.discountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
+                          <span class="font-medium text-red-600 dark:text-red-400">-{{ formatSelectedPaymentAmount(discountAmount) }}</span>
+                        </div>
+                        <div v-if="feeRate > 0" class="flex justify-between">
+                          <span class="text-gray-500 dark:text-gray-400">{{ t('payment.fee') }} ({{ feeRate }}%)</span>
+                          <span class="text-gray-900 dark:text-white">{{ formatSelectedPaymentAmount(feeAmount) }}</span>
+                        </div>
+                        <div v-if="showActualPay" class="flex justify-between border-t border-gray-200 pt-2 dark:border-dark-600">
+                          <span class="font-medium text-gray-700 dark:text-gray-300">{{ t('payment.actualPay') }}</span>
+                          <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{{ formatSelectedPaymentAmount(totalAmount) }}</span>
+                        </div>
+                        <div v-if="showBonusRow" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': !showActualPay }" data-testid="recharge-bonus-row">
+                          <span class="text-gray-500 dark:text-gray-400">{{ t('payment.rechargeBonus.amountLabelWithPercent', { percent: formatRechargeBonusNumber(bonusQuote.percent) }) }}</span>
+                          <span class="font-medium text-red-600 dark:text-red-400">+${{ bonusQuote.bonus.toFixed(2) }}</span>
+                        </div>
+                        <div v-if="showCreditedBalance" class="flex justify-between" :class="{ 'border-t border-gray-200 pt-2 dark:border-dark-600': !showActualPay && !showBonusRow }" data-testid="recharge-credited-row">
+                          <span class="text-gray-500 dark:text-gray-400">{{ t('payment.creditedBalance') }}</span>
+                          <span :class="bonusQuote.percent > 0 ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'">${{ creditedAmount.toFixed(2) }}</span>
+                        </div>
+                        <p v-if="balanceRechargeMultiplier !== 1" class="border-t border-gray-200 pt-2 text-xs text-gray-500 dark:border-dark-600 dark:text-gray-400">
+                          {{ t('payment.rechargeRatePreview', { currency: selectedCurrency, usd: formatBalanceRechargeMultiplier(balanceRechargeMultiplier) }) }}
+                        </p>
+                      </div>
+                    </div>
+                    <HeroPaymentControl
+                      v-if="inlineRecharge"
+                      primary
+                      data-testid="inline-recharge-submit"
+                      :label="isCheckoutPreview ? t('dashboard.assistantSetup.previewPaymentDisabled') : submitting ? t('common.processing') : t('payment.createOrder') + (validAmount > 0 ? ' ' + formatPaymentAmount(totalAmount, selectedCurrency, localeCode, 'code') : '')"
+                      :disabled="!canSubmit || submitting || uncertainOrder"
+                      @press="handleSubmitRecharge"
+                    />
+                    <button v-else :class="['btn min-h-11 w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmit || submitting || uncertainOrder" @click="handleSubmitRecharge">
+                      <span v-if="submitting" class="flex items-center justify-center gap-2">
+                        <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                        {{ t('common.processing') }}
+                      </span>
+                      <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(totalAmount) }}</span>
+                    </button>
+                    <p v-if="inlineRecharge && !isCheckoutPreview" class="text-sm text-gray-600 dark:text-gray-300">
+                      {{ t('dashboard.assistantSetup.rechargeAfterPay') }}
+                    </p>
+                  </div>
+                </component>
               </div>
-            </div>
-            <button :class="['btn w-full py-3 text-base font-medium', paymentButtonClass]" :disabled="!canSubmit || submitting" @click="handleSubmitRecharge">
-              <span v-if="submitting" class="flex items-center justify-center gap-2">
-                <span class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                {{ t('common.processing') }}
-              </span>
-              <span v-else>{{ t('payment.createOrder') }} {{ formatSelectedPaymentAmount(totalAmount) }}</span>
-            </button>
             </template>
           </template>
           <!-- Subscribe Tab -->
@@ -240,7 +323,9 @@
             </template>
           </template>
         </template>
-        <div v-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="card p-4">
+        <HeroPaymentHelp v-if="inlineRecharge && (checkout.help_text || checkout.help_image_url) && paymentPhase === 'select'"
+          :sanitized-html="renderedHelpText" :image-url="checkout.help_image_url" :image-label="t('dashboard.assistantSetup.paymentHelpImage')" :close-label="t('common.close')" />
+        <div v-else-if="(checkout.help_text || checkout.help_image_url) && paymentPhase === 'select' && !selectedPlan" class="card p-4">
           <div class="flex flex-col items-center gap-3">
             <img v-if="checkout.help_image_url" :src="checkout.help_image_url" alt=""
               class="h-40 max-w-full cursor-pointer rounded-lg object-contain transition-opacity hover:opacity-80"
@@ -275,11 +360,14 @@
         </div>
       </Transition>
     </Teleport>
-  </AppLayout>
+  </component>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, defineAsyncComponent, onMounted, watch } from 'vue'
+import { useAsyncState } from '@vueuse/core'
+import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
+import { formatDateTimeToMinute } from '@/utils/format'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -302,12 +390,16 @@ import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vu
 import { METHOD_ORDER, getPaymentPopupFeatures, isBuiltInAlipayMethod, isBuiltInWxpayMethod } from '@/components/payment/providerConfig'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,
+  assistantPaymentStorageKey,
   buildCreateOrderPayload,
   clearPaymentRecoverySnapshot,
   decidePaymentLaunch,
   getVisibleMethods,
   normalizeVisibleMethod,
   readPaymentRecoverySnapshot,
+  rememberAssistantOrder,
+  paymentSettlementState,
+  type SettlementState,
   type PaymentRecoverySnapshot,
   writePaymentRecoverySnapshot,
 } from '@/components/payment/paymentFlow'
@@ -321,6 +413,13 @@ import type { PaymentMethodOption } from '@/components/payment/PaymentMethodSele
 import { buildPaymentErrorToastMessage, describePaymentScenarioError } from './paymentUx'
 import { hasWechatResumeQuery, parseWechatResumeRoute, stripWechatResumeQuery } from './paymentWechatResume'
 
+const HeroPaymentHelp = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentHelp.vue'))
+const HeroPaymentMessage = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentMessage.vue'))
+const HeroPaymentPanel = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentPanel.vue'))
+const HeroPaymentControl = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentControl.vue'))
+const props = defineProps<{ inlineRecharge?: boolean; previewCheckout?: boolean }>()
+const isCheckoutPreview = computed(() => import.meta.env.DEV && props.previewCheckout === true)
+const emit = defineEmits<{ credited: [] }>()
 const i18n = useI18n()
 const { t } = i18n
 const route = useRoute()
@@ -347,6 +446,28 @@ function subscriptionPeakRateLabel(sub: { group?: PeakRateFields | null }): stri
 }
 
 const loading = ref(true)
+const checkoutFailure = ref<'checkout' | 'order' | null>(null)
+const initialSettlement = ref<SettlementState>(null)
+const initiallyRefunded = ref(false)
+const recoveryKey = props.inlineRecharge && user.value ? assistantPaymentStorageKey(user.value.id) : PAYMENT_RECOVERY_STORAGE_KEY
+const uncertainKey = recoveryKey + '.uncertain'
+const uncertainOrder = ref(props.inlineRecharge === true && localStorage.getItem(uncertainKey) === '1')
+
+const orderPage = ref(1)
+const { state: recentOrders, isLoading: checkingOrders, error: ordersError, execute: checkOrders } =
+  useAsyncState(async (page: number) => {
+    orderPage.value = page
+    return (await paymentAPI.getMyOrders({ page, page_size: 5 })).data
+  }, null, { immediate: false })
+
+function setOrderUncertain(value: boolean) {
+  if (!props.inlineRecharge) return
+  recentOrders.value = null
+  orderPage.value = 1
+  uncertainOrder.value = value
+  if (value) localStorage.setItem(uncertainKey, '1')
+  else localStorage.removeItem(uncertainKey)
+}
 const submitting = ref(false)
 const errorMessage = ref('')
 const errorHintMessage = ref('')
@@ -434,20 +555,28 @@ async function invokeWechatJsapiPayment(payload: Record<string, unknown>): Promi
 
 const paymentState = ref<PaymentRecoverySnapshot>(emptyPaymentState())
 
-function persistRecoverySnapshot(snapshot: PaymentRecoverySnapshot) {
+function persistRecoverySnapshot(snapshot: PaymentRecoverySnapshot, requestedAmount?: number) {
   if (typeof window === 'undefined' || !snapshot.orderId) return
-  writePaymentRecoverySnapshot(window.localStorage, snapshot, PAYMENT_RECOVERY_STORAGE_KEY)
+  if (props.inlineRecharge && user.value) rememberAssistantOrder(window.localStorage, user.value.id, snapshot)
+  writePaymentRecoverySnapshot(
+    window.localStorage,
+    props.inlineRecharge ? { ...snapshot, requestedAmount } : snapshot,
+    recoveryKey,
+  )
 }
 
-function removeRecoverySnapshot() {
+function removeRecoverySnapshot(orderId?: number) {
   if (typeof window === 'undefined') return
-  clearPaymentRecoverySnapshot(window.localStorage, PAYMENT_RECOVERY_STORAGE_KEY)
+  if (orderId && readPaymentRecoverySnapshot(localStorage.getItem(recoveryKey), { allowExpired: true })?.orderId !== orderId) return
+  clearPaymentRecoverySnapshot(window.localStorage, recoveryKey)
 }
 
 function resetPayment() {
+  removeRecoverySnapshot(paymentState.value.orderId)
   paymentPhase.value = 'select'
+  initialSettlement.value = null
+  initiallyRefunded.value = false
   paymentState.value = emptyPaymentState()
-  removeRecoverySnapshot()
 }
 
 async function redirectToPaymentResult(state: PaymentRecoverySnapshot): Promise<void> {
@@ -479,7 +608,7 @@ function buildWechatOAuthAuthorizeUrl(
   try {
     const targetUrl = new URL(normalizedUrl, window.location.origin)
     const redirectPath = targetUrl.searchParams.get('redirect') || '/purchase'
-    const redirectUrl = new URL(redirectPath, window.location.origin)
+    const redirectUrl = new URL(props.inlineRecharge ? '/dashboard?recharge=1' : redirectPath, window.location.origin)
     const paymentType = normalizeVisibleMethod(context.paymentType) || context.paymentType.trim() || 'wxpay'
 
     redirectUrl.searchParams.set('payment_type', paymentType)
@@ -513,18 +642,30 @@ function onPaymentDone() {
   }
 }
 
-async function onPaymentSuccess() {
-  const completedPayment = { ...paymentState.value }
-  removeRecoverySnapshot()
-  authStore.refreshUser()
+async function onPaymentSettled(outcome: string) {
+  if (outcome === 'success' && props.inlineRecharge) {
+    confirmCredit()
+    return
+  }
+  if (outcome === 'refunded') return
+  removeRecoverySnapshot(paymentState.value.orderId)
+  if (outcome !== 'success') return
+  void authStore.refreshUser().catch(console.error)
   if (paymentState.value.orderType === 'subscription') {
     subscriptionStore.fetchActiveSubscriptions(true).catch(() => {})
   }
-  await redirectToPaymentResult(completedPayment)
+  await redirectToPaymentResult(paymentState.value)
 }
 
-function onPaymentSettled() {
-  removeRecoverySnapshot()
+function confirmCredit() {
+  resetPayment()
+  amount.value = null
+  appStore.showSuccess(t('dashboard.assistantSetup.credited'))
+  emit('credited')
+  void authStore.refreshUser().catch(error => {
+    console.error('Failed to refresh balance after recharge', error)
+    appStore.showError(t('dashboard.assistantSetup.balanceError'))
+  })
 }
 
 // All checkout data from single API call
@@ -547,7 +688,7 @@ const renderedBonusNotice = computed(() => {
 
 // 订阅功能开关（public settings 的 subscription_enabled，opt-out）。关闭后购买页只保留充值：
 // 不再渲染「订阅」tab，只剩单个 tab 时顶部切换器也随之隐藏。
-const subscriptionEnabled = computed(() => resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.subscription))
+const subscriptionEnabled = computed(() => !props.inlineRecharge && resolveFeatureFlag(appStore.cachedPublicSettings, FeatureFlags.subscription))
 
 const tabs = computed(() => {
   const result: { key: 'recharge' | 'subscription'; label: string }[] = []
@@ -714,7 +855,7 @@ const amountError = computed(() => {
 })
 
 const canSubmit = computed(() =>
-  validAmount.value > 0
+  !isCheckoutPreview.value && validAmount.value > 0
     && amountFitsMethod(payBaseAmount.value, selectedMethod.value)
     && selectedLimit.value?.available !== false
 )
@@ -823,7 +964,7 @@ function closeRenewalModal() {
 }
 
 async function handleSubmitRecharge() {
-  if (!canSubmit.value || submitting.value) return
+  if (!canSubmit.value || submitting.value || uncertainOrder.value) return
   await createOrder(validAmount.value, 'balance')
 }
 
@@ -832,11 +973,29 @@ async function confirmSubscribe() {
   await createOrder(selectedPlan.value.price, 'subscription', selectedPlan.value.id)
 }
 
+async function requestOrder(payload: ReturnType<typeof buildCreateOrderPayload>) {
+  setOrderUncertain(true)
+  try {
+    const result = await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }
+    setOrderUncertain(false)
+    return result
+  } catch (error) {
+    const status = (error as { status?: number }).status
+    if (status && status < 500) setOrderUncertain(false)
+    throw error
+  }
+}
+
 async function createOrder(orderAmount: number, orderType: OrderType, planId?: number, options: CreateOrderOptions = {}) {
   submitting.value = true
   errorMessage.value = ''
   errorHintMessage.value = ''
   const requestType = normalizeVisibleMethod(options.paymentType || selectedMethod.value) || options.paymentType || selectedMethod.value
+  const requestedAmount = options.wechatResumeToken ? amount.value ?? undefined : orderAmount
+  const qrFallback = {
+    orderAmount, requestedAmount, orderType, planId, paymentType: requestType,
+    wechatResumeToken: options.wechatResumeToken, attempted: options.mobileQrFallbackAttempted === true,
+  }
   try {
     const payload = buildCreateOrderPayload({
       amount: orderAmount,
@@ -856,7 +1015,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
       payload.wechat_resume_token = options.wechatResumeToken
     }
 
-    const result = await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }
+    const result = await requestOrder(payload)
     const openWindow = (url: string) => {
       const win = window.open(url, 'paymentPopup', getPaymentPopupFeatures())
       if (!win || win.closed) {
@@ -906,19 +1065,20 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
         paymentType: visibleMethod,
         orderType,
         planId,
-        orderAmount,
+        orderAmount: requestedAmount ?? orderAmount,
       })
       return
     }
 
     if (decision.kind === 'unhandled') {
+      if (result.order_id) setOrderUncertain(true)
       applyScenarioError({ reason: 'UNHANDLED_PAYMENT_SCENARIO' }, visibleMethod)
       return
     }
 
     paymentState.value = decision.paymentState
     paymentPhase.value = 'paying'
-    persistRecoverySnapshot(decision.recovery)
+    persistRecoverySnapshot(decision.recovery, requestedAmount)
 
     if (decision.kind === 'stripe_popup') {
       openWindow(decision.paymentState.payUrl)
@@ -938,36 +1098,29 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
         const errMsg = String(jsapiResult.err_msg || '').toLowerCase()
         if (errMsg.includes('cancel')) {
           appStore.showInfo(t('payment.qr.cancelled'))
-          resetPayment()
+          if (!props.inlineRecharge) resetPayment()
         } else if (errMsg && !errMsg.includes('ok')) {
+          if (props.inlineRecharge) {
+            applyScenarioError({ reason: 'WECHAT_JSAPI_FAILED', message: errMsg }, visibleMethod)
+            return
+          }
           resetPayment()
           const fallbackApplied = await attemptMobileQrFallback(
             { reason: 'WECHAT_JSAPI_FAILED', message: errMsg },
-            {
-              orderAmount,
-              orderType,
-              planId,
-              paymentType: visibleMethod,
-              attempted: options.mobileQrFallbackAttempted === true,
-            },
+            qrFallback,
           )
           if (!fallbackApplied) {
             applyScenarioError({ reason: 'WECHAT_JSAPI_FAILED', message: errMsg }, visibleMethod)
           }
-        } else {
+        } else if (!props.inlineRecharge) {
           const resultState = { ...decision.paymentState }
           resetPayment()
           await redirectToPaymentResult(resultState)
         }
       } catch (err: unknown) {
+        if (props.inlineRecharge) throw err
         resetPayment()
-        const fallbackApplied = await attemptMobileQrFallback(err, {
-          orderAmount,
-          orderType,
-          planId,
-          paymentType: visibleMethod,
-          attempted: options.mobileQrFallbackAttempted === true,
-        })
+        const fallbackApplied = await attemptMobileQrFallback(err, qrFallback)
         if (!fallbackApplied) {
           throw err
         }
@@ -990,13 +1143,7 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
     } else if (apiErr.reason === 'CANCEL_RATE_LIMITED') {
       errorMessage.value = t('payment.errors.cancelRateLimited')
       errorHintMessage.value = ''
-    } else if (await attemptMobileQrFallback(err, {
-      orderAmount,
-      orderType,
-      planId,
-      paymentType: requestType,
-      attempted: options.mobileQrFallbackAttempted === true,
-    })) {
+    } else if (!uncertainOrder.value && !(props.inlineRecharge && paymentState.value.orderId) && await attemptMobileQrFallback(err, qrFallback)) {
       return
     } else {
       const handled = applyScenarioError(
@@ -1019,6 +1166,8 @@ async function createOrder(orderAmount: number, orderType: OrderType, planId?: n
 
 interface MobileQrFallbackContext {
   orderAmount: number
+  requestedAmount?: number
+  wechatResumeToken?: string
   orderType: OrderType
   planId?: number
   paymentType: string
@@ -1074,7 +1223,8 @@ async function attemptMobileQrFallback(err: unknown, context: MobileQrFallbackCo
       isMobile: false,
       isWechatBrowser: false,
     })
-    const result = await paymentStore.createOrder(payload) as CreateOrderResult & { resume_token?: string }
+    if (context.wechatResumeToken) payload.wechat_resume_token = context.wechatResumeToken
+    const result = await requestOrder(payload)
     const stripeMethod = visibleMethod === 'wxpay' ? 'wechat_pay' : 'alipay'
     const stripeRouteUrl = result.client_secret
       ? router.resolve({
@@ -1096,6 +1246,7 @@ async function attemptMobileQrFallback(err: unknown, context: MobileQrFallbackCo
     })
 
     if (decision.kind !== 'qr_waiting' || !decision.paymentState.qrCode) {
+      if (result.order_id) setOrderUncertain(true)
       return false
     }
 
@@ -1103,7 +1254,7 @@ async function attemptMobileQrFallback(err: unknown, context: MobileQrFallbackCo
     errorHintMessage.value = ''
     paymentState.value = decision.paymentState
     paymentPhase.value = 'paying'
-    persistRecoverySnapshot(decision.recovery)
+    persistRecoverySnapshot(decision.recovery, context.requestedAmount)
     appStore.showWarning(t('payment.errors.mobilePaymentFallbackToQr'))
     return true
   } catch {
@@ -1135,8 +1286,8 @@ async function resumeWechatPaymentFromQuery() {
   }
 
   selectedMethod.value = resume.paymentType
-  if (resume.orderType === 'balance' && resume.orderAmount > 0) {
-    amount.value = resume.orderAmount
+  if (resume.orderType === 'balance') {
+    amount.value = resume.selectedAmount ?? (resume.orderAmount > 0 ? resume.orderAmount : null)
   }
   if (resume.orderType === 'subscription' && resume.planId) {
     selectedPlan.value = checkout.value.plans.find(plan => plan.id === resume.planId) ?? null
@@ -1162,10 +1313,30 @@ async function resumeWechatPaymentFromQuery() {
   }
 }
 
-onMounted(async () => {
+async function loadCheckout() {
+  loading.value = true
+  checkoutFailure.value = null
   try {
     const res = await paymentAPI.getCheckoutInfo()
-    checkout.value = res.data
+    const previewLimits = isCheckoutPreview.value ? (await paymentAPI.getConfig()).data : null
+    checkout.value = previewLimits ? {
+      ...res.data,
+      balance_disabled: false,
+      global_min: previewLimits.min_amount,
+      global_max: previewLimits.max_amount,
+      methods: {
+        alipay: {
+          available: true,
+          currency: 'CNY',
+          single_min: previewLimits.min_amount,
+          single_max: previewLimits.max_amount,
+          daily_limit: 0,
+          daily_used: 0,
+          daily_remaining: 0,
+          fee_rate: res.data.recharge_fee_rate,
+        },
+      },
+    } : res.data
     if (enabledMethods.value.length) {
       const order: readonly string[] = METHOD_ORDER
       const sorted = [...enabledMethods.value].sort((a, b) => {
@@ -1175,19 +1346,41 @@ onMounted(async () => {
       })
       selectedMethod.value = sorted[0]
     }
+    if (isCheckoutPreview.value) return
     if (typeof window !== 'undefined') {
-      if (hasWechatResumeQuery(route.query)) {
-        removeRecoverySnapshot()
-      }
+      const wechatReturn = hasWechatResumeQuery(route.query)
+      if (wechatReturn && !props.inlineRecharge) removeRecoverySnapshot()
       const routeResumeToken = typeof route.query.resume_token === 'string'
         ? route.query.resume_token
         : typeof route.query.wechat_resume_token === 'string'
           ? route.query.wechat_resume_token
           : undefined
-      const restored = readPaymentRecoverySnapshot(
-        window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY),
-        { resumeToken: routeResumeToken },
+      let restored = readPaymentRecoverySnapshot(
+        window.localStorage.getItem(recoveryKey),
+        { resumeToken: props.inlineRecharge && wechatReturn ? undefined : routeResumeToken, allowExpired: props.inlineRecharge },
       )
+      if (restored && props.inlineRecharge) {
+        if (user.value) rememberAssistantOrder(window.localStorage, user.value.id, restored)
+        amount.value = restored.requestedAmount ?? null
+        const order = await paymentStore.pollOrderStatus(restored.orderId)
+        if (!order) {
+          checkoutFailure.value = 'order'
+          return
+        }
+        // An OAuth return can proceed past an old order only after verifying it closed unpaid.
+        if (wechatReturn && !order.paid_at && ['FAILED', 'EXPIRED', 'CANCELLED'].includes(order.status)) {
+          restored = null
+        } else if (wechatReturn) {
+          await router.replace({ path: route.path, query: stripWechatResumeQuery(route.query) })
+        }
+        if (restored && order.status === 'COMPLETED') {
+          paymentState.value = restored
+          confirmCredit()
+          return
+        }
+        initiallyRefunded.value = order.status === 'REFUNDED'
+        initialSettlement.value = paymentSettlementState(order)
+      }
       if (restored) {
         paymentState.value = restored
         paymentPhase.value = 'paying'
@@ -1196,6 +1389,7 @@ onMounted(async () => {
         if (restoredMethod) {
           selectedMethod.value = restoredMethod
         }
+        if (props.inlineRecharge && wechatReturn) return
       } else {
         removeRecoverySnapshot()
       }
@@ -1216,11 +1410,16 @@ onMounted(async () => {
         }
       }
     }
-  } catch (err: unknown) { appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error'))) }
+  } catch (err: unknown) {
+    checkoutFailure.value = props.inlineRecharge ? 'checkout' : null
+    appStore.showError(extractI18nErrorMessage(err, t, 'payment.errors', t('common.error')))
+  }
   finally { loading.value = false }
   // Fetch active subscriptions (uses cache, non-blocking); skipped when the subscription feature is off
   if (subscriptionEnabled.value) {
     subscriptionStore.fetchActiveSubscriptions().catch(() => {})
   }
-})
+}
+
+onMounted(loadCheckout)
 </script>

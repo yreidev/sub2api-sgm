@@ -157,7 +157,25 @@ export async function toggleStatus(id: number, status: 'active' | 'inactive'): P
   return update(id, { status })
 }
 
+async function getAssistant(): Promise<string | null> {
+  const { data } = await apiClient.get<{ key: string | null }>('/keys/assistant')
+  return data.key
+}
+
+async function ensureAssistant(replaceDeleted: boolean): Promise<string> {
+  const { data } = await apiClient.put<{ key: string }>('/keys/assistant', { replace_deleted: replaceDeleted })
+  return data.key
+}
+
+async function listAssistantModels(): Promise<string[]> {
+  const { data } = await apiClient.get<string[]>('/keys/assistant/models')
+  return data
+}
+
 export const keysAPI = {
+  listAssistantModels,
+  ensureAssistant,
+  getAssistant,
   list,
   getById,
   create,

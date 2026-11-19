@@ -67,17 +67,7 @@ func FilterCodexModelIDsForGroup(modelIDs []string, group *Group) []string {
 	}
 
 	filtered := make([]string, 0, len(modelIDs))
-	for _, modelID := range modelIDs {
-		modelID = strings.TrimSpace(modelID)
-		if modelID == "" {
-			continue
-		}
-		if isCodexDedicatedMediaModel(modelID) {
-			continue
-		}
-		if strings.Contains(modelID, "*") {
-			continue
-		}
+	for _, modelID := range ConcreteTextModelIDs(modelIDs) {
 		if strings.HasPrefix(modelID, codexAutoModelPrefix) {
 			if _, ok := explicitlyEnabled[modelID]; !ok {
 				continue
@@ -89,6 +79,18 @@ func FilterCodexModelIDsForGroup(modelIDs []string, group *Group) []string {
 		filtered = group.ModelAllowlist.FilterForListing(filtered)
 	}
 	return filtered
+}
+
+// ConcreteTextModelIDs excludes non-selectable routing patterns and dedicated media generators.
+func ConcreteTextModelIDs(modelIDs []string) []string {
+	textModels := make([]string, 0, len(modelIDs))
+	for _, id := range modelIDs {
+		id = strings.TrimSpace(id)
+		if id != "" && !strings.Contains(id, "*") && !isCodexDedicatedMediaModel(id) {
+			textModels = append(textModels, id)
+		}
+	}
+	return textModels
 }
 
 func isCodexDedicatedMediaModel(modelID string) bool {

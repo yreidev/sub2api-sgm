@@ -94,12 +94,10 @@ describe('useRoutePrefetch', () => {
       expect(config).toHaveLength(2)
     })
 
-    it('普通用户 dashboard 应该返回正确的预加载配置', () => {
+    it('简洁首页不预加载后台页面', () => {
       const { _getPrefetchConfig } = useRoutePrefetch(mockRouter)
       const route = createMockRoute('/dashboard')
-      const config = _getPrefetchConfig(route)
-
-      expect(config).toHaveLength(2)
+      expect(_getPrefetchConfig(route)).toHaveLength(0)
     })
 
     it('未定义的路由应该返回空数组', () => {
@@ -194,8 +192,8 @@ describe('useRoutePrefetch', () => {
     })
 
     it('用户预加载映射表应该包含正确的路由', () => {
-      expect(_userPrefetchMap).toHaveProperty('/dashboard')
-      expect(_userPrefetchMap['/dashboard']).toHaveLength(2)
+      expect(_userPrefetchMap).toHaveProperty('/dashboard/standard')
+      expect(_userPrefetchMap['/dashboard/standard']).toHaveLength(2)
     })
   })
 
@@ -208,14 +206,14 @@ describe('useRoutePrefetch', () => {
       })
 
       const { triggerPrefetch, prefetchedRoutes } = useRoutePrefetch(mockRouter)
-      const route = createMockRoute('/dashboard')
+      const route = createMockRoute('/dashboard/standard')
 
       triggerPrefetch(route)
 
       // 等待超时执行
       await new Promise((resolve) => setTimeout(resolve, 2100))
 
-      expect(prefetchedRoutes.value.has('/dashboard')).toBe(true)
+      expect(prefetchedRoutes.value.has('/dashboard/standard')).toBe(true)
     })
   })
 

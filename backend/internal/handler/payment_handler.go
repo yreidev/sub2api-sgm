@@ -546,7 +546,7 @@ func buildPublicOrderVerifyResult(order *dbent.PaymentOrder) PublicOrderVerifyRe
 	return PublicOrderVerifyResult{
 		OutTradeNo:  order.OutTradeNo,
 		Status:      order.Status,
-		Paid:        publicOrderStatusPaid(order.Status),
+		Paid:        order.PaidAt != nil || publicOrderStatusPaid(order.Status),
 		CreatedAt:   order.CreatedAt,
 		ExpiresAt:   order.ExpiresAt,
 		PaidAt:      order.PaidAt,

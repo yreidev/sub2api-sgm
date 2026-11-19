@@ -75,6 +75,18 @@ func TestApplyWeChatPaymentResumeClaimsRejectsPaymentTypeMismatch(t *testing.T) 
 	}
 }
 
+func TestPublicOrderVerifyResultDistinguishesFailedFulfillmentFromUnpaidFailure(t *testing.T) {
+	t.Parallel()
+	order := &dbent.PaymentOrder{Status: service.OrderStatusFailed}
+	require.False(t, buildPublicOrderVerifyResult(order).Paid)
+	paidAt := time.Now()
+	order.PaidAt = &paidAt
+	result := buildPublicOrderVerifyResult(order)
+	require.True(t, result.Paid)
+	require.Equal(t, service.OrderStatusFailed, result.Status)
+	require.Equal(t, &paidAt, result.PaidAt)
+}
+
 func TestVerifyOrderPublicReturnsLegacyOrderState(t *testing.T) {
 	t.Parallel()
 

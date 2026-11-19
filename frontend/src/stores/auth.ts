@@ -106,7 +106,7 @@ export const useAuthStore = defineStore('auth', () => {
    * Call this on app startup to restore session
    * Also starts auto-refresh and immediately fetches latest user data
    */
-  function checkAuth(): void {
+  async function checkAuth(): Promise<void> {
     const savedToken = localStorage.getItem(AUTH_TOKEN_KEY)
     const savedUser = localStorage.getItem(AUTH_USER_KEY)
     const savedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY)
@@ -116,12 +116,15 @@ export const useAuthStore = defineStore('auth', () => {
     if (savedToken && savedUser) {
       try {
         token.value = savedToken
-        user.value = JSON.parse(savedUser)
+        const cachedUser: User = JSON.parse(savedUser)
+        const verifyAdmin = cachedUser.role === 'admin'
+        // Only the server can restore admin privileges after a reload.
+        user.value = verifyAdmin ? { ...cachedUser, role: 'user' } : cachedUser
         refreshTokenValue.value = savedRefreshToken
         tokenExpiresAt.value = savedExpiresAt ? parseInt(savedExpiresAt, 10) : null
 
         // Immediately refresh user data from backend (async, don't block)
-        refreshUser().catch((error) => {
+        const verification = refreshUser().catch((error) => {
           console.error('Failed to refresh user on init:', error)
         })
 
@@ -133,6 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
         if (savedRefreshToken && tokenExpiresAt.value !== null) {
           scheduleTokenRefreshAt(tokenExpiresAt.value)
         }
+        if (verifyAdmin) await verification
       } catch (error) {
         console.error('Failed to parse saved user data:', error)
         clearAuth({ preservePendingAuthSession: true })

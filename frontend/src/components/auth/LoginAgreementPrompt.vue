@@ -4,30 +4,20 @@
     class="px-0.5"
   >
     <div class="flex items-start gap-2">
-      <input
-        id="login-agreement-consent"
-        type="checkbox"
-        :checked="accepted"
-        class="mt-[2px] h-4 w-4 flex-shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-900"
-        @change="handleCheckboxChange"
-      />
       <div class="min-w-0 flex-1">
-        <p class="text-[13px] leading-5 text-gray-600 dark:text-dark-300">
-          <label
-            for="login-agreement-consent"
-            class="cursor-pointer text-gray-700 dark:text-dark-200"
-          >
+        <p class="text-[13px] leading-5">
+          <HeroCheckbox id="login-agreement-consent" :model-value="accepted" @update:model-value="$event ? emit('accept') : emit('reject')">
             {{ t('legal.loginAgreementPrompt.checkboxPrefix') }}
-          </label>
+          </HeroCheckbox>
           <template v-for="(doc, index) in documents" :key="doc.id || doc.title">
-            <RouterLink
+            <HeroLink
               :to="documentRoute(doc)"
               target="_blank"
               rel="noopener noreferrer"
               class="font-medium text-primary-600 underline-offset-4 transition hover:text-primary-700 hover:underline dark:text-primary-300 dark:hover:text-primary-200"
             >
               {{ doc.title }}
-            </RouterLink>
+            </HeroLink>
             <span v-if="index < documents.length - 1">{{ t('legal.loginAgreementPrompt.documentSeparator') }}</span>
           </template>
         </p>
@@ -47,102 +37,97 @@
           {{ t('legal.loginAgreementPrompt.noticeDescription') }}
         </p>
       </div>
-      <button
+      <HeroButton
         type="button"
         class="flex-shrink-0 rounded-md bg-primary-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary-700"
-        @click="emit('open')"
+        @press="emit('open')"
       >
         {{ t('legal.loginAgreementPrompt.viewTerms') }}
-      </button>
+      </HeroButton>
     </div>
   </div>
 
-  <Teleport to="body">
-    <Transition name="agreement-fade">
-      <div
-        v-if="dialogVisible"
-        class="fixed inset-0 z-[140] flex items-center justify-center overflow-y-auto bg-gray-950/60 p-4 backdrop-blur-sm"
-      >
-        <div class="w-full max-w-[600px] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10 dark:bg-dark-900 dark:ring-white/10">
-          <div class="border-b border-gray-100 bg-white px-6 py-6 dark:border-dark-800 dark:bg-dark-900">
-            <div class="flex items-start gap-4">
-              <span class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 ring-1 ring-primary-100 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-500/20">
-                <Icon name="shield" size="md" />
-              </span>
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="text-xl font-bold tracking-normal text-gray-950 dark:text-white">
-                    {{ t('legal.loginAgreementPrompt.dialogTitle') }}
-                  </h2>
-                  <span
-                    v-if="updatedAt"
-                    class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-dark-800 dark:text-dark-300"
-                  >
-                    {{ updatedAt }}
-                  </span>
-                </div>
-                <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
-                  {{
-                    t('legal.loginAgreementPrompt.dialogDescription', {
-                      date: updatedAt || t('legal.loginAgreementPrompt.recently'),
-                    })
-                  }}
-                </p>
-              </div>
-            </div>
+  <HeroModal v-if="dialogVisible" :label="t('legal.loginAgreementPrompt.dialogTitle')">
+    <div class="border-b border-gray-100 bg-white px-6 py-6 dark:border-dark-800 dark:bg-dark-900">
+      <div class="flex items-start gap-4">
+        <span class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-700 ring-1 ring-primary-100 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-500/20">
+          <Icon name="shield" size="md" />
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-xl font-bold tracking-normal text-gray-950 dark:text-white">
+              {{ t('legal.loginAgreementPrompt.dialogTitle') }}
+            </h2>
+            <span
+              v-if="updatedAt"
+              class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-dark-800 dark:text-dark-300"
+            >
+              {{ updatedAt }}
+            </span>
           </div>
-
-          <div class="max-h-[58vh] overflow-y-auto px-6 py-5">
-            <div class="mb-3 flex items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('legal.loginAgreementPrompt.relatedDocuments') }}</p>
-            </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <RouterLink
-                v-for="(doc, index) in documents"
-                :key="doc.id || doc.title"
-                :to="documentRoute(doc)"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="group flex min-h-[72px] w-full items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-primary-200 hover:bg-white hover:shadow-sm dark:border-dark-700 dark:bg-dark-800/70 dark:hover:border-primary-500/30 dark:hover:bg-dark-800"
-              >
-                <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white text-gray-700 ring-1 ring-gray-200 transition group-hover:bg-primary-50 group-hover:text-primary-700 group-hover:ring-primary-100 dark:bg-dark-900 dark:text-dark-200 dark:ring-dark-700 dark:group-hover:bg-primary-500/10 dark:group-hover:text-primary-200 dark:group-hover:ring-primary-500/20">
-                  <Icon :name="documentIcon(index, doc.title)" size="sm" />
-                </span>
-                <span class="min-w-0 flex-1">
-                  <span class="block truncate text-sm font-semibold text-gray-950 dark:text-white">{{ doc.title }}</span>
-                </span>
-                <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition group-hover:bg-primary-50 group-hover:text-primary-600 dark:group-hover:bg-primary-500/10 dark:group-hover:text-primary-300">
-                  <Icon name="externalLink" size="sm" />
-                </span>
-              </RouterLink>
-            </div>
-          </div>
-
-          <div class="border-t border-gray-100 bg-gray-50/80 px-6 py-4 dark:border-dark-800 dark:bg-dark-950/60">
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200 dark:hover:bg-dark-700"
-                @click="emit('reject')"
-              >
-                {{ t('legal.loginAgreementPrompt.reject') }}
-              </button>
-              <button
-                type="button"
-                class="rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-primary-600/20 transition hover:bg-primary-700"
-                @click="emit('accept')"
-              >
-                {{ t('legal.loginAgreementPrompt.accept') }}
-              </button>
-            </div>
-          </div>
+          <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
+            {{
+              t('legal.loginAgreementPrompt.dialogDescription', {
+                date: updatedAt || t('legal.loginAgreementPrompt.recently'),
+              })
+            }}
+          </p>
         </div>
       </div>
-    </Transition>
-  </Teleport>
+    </div>
+
+    <div class="max-h-[58vh] overflow-y-auto px-6 py-5">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ t('legal.loginAgreementPrompt.relatedDocuments') }}</p>
+      </div>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <HeroLink
+          v-for="(doc, index) in documents"
+          :key="doc.id || doc.title"
+          :to="documentRoute(doc)"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="group flex min-h-[72px] w-full items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-primary-200 hover:bg-white hover:shadow-sm dark:border-dark-700 dark:bg-dark-800/70 dark:hover:border-primary-500/30 dark:hover:bg-dark-800"
+        >
+          <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-white text-gray-700 ring-1 ring-gray-200 transition group-hover:bg-primary-50 group-hover:text-primary-700 group-hover:ring-primary-100 dark:bg-dark-900 dark:text-dark-200 dark:ring-dark-700 dark:group-hover:bg-primary-500/10 dark:group-hover:text-primary-200 dark:group-hover:ring-primary-500/20">
+            <Icon :name="documentIcon(index, doc.title)" size="sm" />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold text-gray-950 dark:text-white">{{ doc.title }}</span>
+          </span>
+          <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition group-hover:bg-primary-50 group-hover:text-primary-600 dark:group-hover:bg-primary-500/10 dark:group-hover:text-primary-300">
+            <Icon name="externalLink" size="sm" />
+          </span>
+        </HeroLink>
+      </div>
+    </div>
+
+    <div class="border-t border-gray-100 bg-gray-50/80 px-6 py-4 dark:border-dark-800 dark:bg-dark-950/60">
+      <div class="grid grid-cols-2 gap-3">
+        <HeroButton
+          type="button"
+          class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200 dark:hover:bg-dark-700"
+          @press="emit('reject')"
+        >
+          {{ t('legal.loginAgreementPrompt.reject') }}
+        </HeroButton>
+        <HeroButton
+          type="button"
+          class="rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-primary-600/20 transition hover:bg-primary-700"
+          @press="emit('accept')"
+        >
+          {{ t('legal.loginAgreementPrompt.accept') }}
+        </HeroButton>
+      </div>
+    </div>
+  </HeroModal>
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroLink from '@/components/hero/HeroLink.vue'
+import HeroCheckbox from '@/components/hero/HeroCheckbox.vue'
+import HeroModal from '@/components/hero/HeroModal.vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -178,15 +163,6 @@ function documentRoute(doc: LoginAgreementDocument) {
     params: {
       documentId: doc.id || doc.title,
     },
-  }
-}
-
-function handleCheckboxChange(event: Event): void {
-  const checked = (event.target as HTMLInputElement).checked
-  if (checked) {
-    emit('accept')
-  } else {
-    emit('reject')
   }
 }
 

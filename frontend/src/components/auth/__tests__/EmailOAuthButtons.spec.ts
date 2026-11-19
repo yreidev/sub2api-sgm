@@ -103,7 +103,7 @@ describe('EmailOAuthButtons', () => {
     })
   })
 
-  it('uses a full-width descriptive button when only GitHub is enabled', () => {
+  it('uses a full-width descriptive button when only GitHub is enabled', async () => {
     const wrapper = mount(EmailOAuthButtons, {
       props: {
         githubEnabled: true,
@@ -117,11 +117,12 @@ describe('EmailOAuthButtons', () => {
       },
     })
 
+    await wrapper.vm.$nextTick()
     expect(wrapper.find('.grid').classes()).not.toContain('sm:grid-cols-2')
     expect(wrapper.get('button').text()).toContain('使用 GitHub 登录')
   })
 
-  it('uses compact labels and two columns when GitHub and Google are both enabled', () => {
+  it('uses compact labels and two columns when GitHub and Google are both enabled', async () => {
     const wrapper = mount(EmailOAuthButtons, {
       props: {
         githubEnabled: true,
@@ -135,6 +136,7 @@ describe('EmailOAuthButtons', () => {
       },
     })
 
+    await wrapper.vm.$nextTick()
     expect(wrapper.find('.grid').classes()).toContain('sm:grid-cols-2')
     const buttons = wrapper.findAll('button')
     expect(buttons).toHaveLength(2)

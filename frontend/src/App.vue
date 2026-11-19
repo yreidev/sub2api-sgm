@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterView, useRouter, useRoute } from 'vue-router'
-import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onBeforeUnmount, watch } from 'vue'
 import Toast from '@/components/common/Toast.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
 import AdminComplianceDialog from '@/components/admin/AdminComplianceDialog.vue'
@@ -12,6 +12,7 @@ import { updateFavicon } from '@/utils/branding'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
 
+const HeroToasts = defineAsyncComponent(() => import('@/components/assistant/AssistantToasts.vue'))
 const router = useRouter()
 const route = useRoute()
 const appStore = useAppStore()
@@ -127,6 +128,13 @@ watch(
   { immediate: true }
 )
 
+watch(() => authStore.isAdmin, (isAdmin, wasAdmin) => {
+  if (wasAdmin && !isAdmin && authStore.isAuthenticated && route.meta.requiresAuth !== false &&
+      route.name !== 'Dashboard' && route.name !== 'MCPOAuthAuthorize') {
+    void router.replace('/dashboard')
+  }
+})
+
 // Route change trigger (throttled by store)
 router.afterEach(() => {
   if (authStore.isAuthenticated) {
@@ -164,7 +172,8 @@ onMounted(async () => {
 <template>
   <NavigationProgress />
   <RouterView />
-  <Toast />
-  <AnnouncementPopup />
+  <HeroToasts v-if="route.meta.heroUI" />
+  <Toast v-else />
+  <AnnouncementPopup :hero="route.meta.heroUI === true" />
   <AdminComplianceDialog />
 </template>

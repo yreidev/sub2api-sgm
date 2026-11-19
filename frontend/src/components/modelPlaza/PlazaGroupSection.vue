@@ -1,24 +1,25 @@
 <template>
-  <section
-    class="overflow-hidden rounded-2xl border bg-white shadow-card dark:bg-dark-800/50"
-    :class="[platformBorderStrongClass(group.platform)]"
-  >
+  <HeroCard as="section" class="plaza-group" :aria-label="group.name">
     <!-- 分组头部:名称/平台/倍率徽章/专属/订阅徽章 + 描述 -->
-    <header class="border-b border-gray-100 px-5 py-4 dark:border-dark-700/60">
+    <header class="group-heading">
       <div class="flex flex-wrap items-center gap-2">
-        <GroupBadge
-          :name="group.name"
-          :platform="group.platform as GroupPlatform"
-          :subscription-type="(group.subscription_type || 'standard') as SubscriptionType"
-          :rate-multiplier="group.rate_multiplier"
-          :user-rate-multiplier="group.user_rate_multiplier ?? null"
-          :peak-rate-enabled="group.peak_rate_enabled"
-          :peak-start="group.peak_start"
-          :peak-end="group.peak_end"
-          :peak-rate-multiplier="group.peak_rate_multiplier"
-          always-show-rate
-        />
+        <h2 class="min-w-0">
+          <GroupBadge :class="groupChip" data-slot="chip"
+            :name="group.name"
+            :platform="group.platform as GroupPlatform"
+            :subscription-type="(group.subscription_type || 'standard') as SubscriptionType"
+            :rate-multiplier="group.rate_multiplier"
+            :user-rate-multiplier="group.user_rate_multiplier ?? null"
+            :peak-rate-enabled="group.peak_rate_enabled"
+            :peak-start="group.peak_start"
+            :peak-end="group.peak_end"
+            :peak-rate-multiplier="group.peak_rate_multiplier"
+            always-show-rate
+            :truncate="false"
+          />
+        </h2>
         <span
+          :class="groupChip" data-slot="chip"
           v-if="group.is_exclusive"
           class="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-600 dark:bg-purple-900/20 dark:text-purple-400"
         >
@@ -26,6 +27,7 @@
           {{ t('modelPlaza.badges.exclusive') }}
         </span>
         <span
+          :class="groupChip" data-slot="chip"
           v-if="group.subscription_type === 'subscription'"
           class="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
         >
@@ -52,10 +54,11 @@
     </header>
 
     <!-- 模型价格表:整行(含 hover 底色/分区底色)顶到卡片边缘,左右留白由表格首列/末列的 padding 提供 -->
-    <div>
+    <div class="pricing-frame">
       <PlazaModelPricingTable
         v-if="group.models.length > 0"
         :models="group.models"
+        :group-name="group.name"
         :platform="group.platform"
         :rate-multiplier="group.rate_multiplier"
         :user-rate-multiplier="group.user_rate_multiplier ?? null"
@@ -70,10 +73,12 @@
         {{ t('modelPlaza.detail.noModels') }}
       </p>
     </div>
-  </section>
+  </HeroCard>
 </template>
 
 <script setup lang="ts">
+import { chipVariants } from '@heroui/styles'
+import HeroCard from '@/components/hero/HeroCard.vue'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
@@ -81,10 +86,10 @@ import GroupBadge from '@/components/common/GroupBadge.vue'
 import PlazaModelPricingTable from './PlazaModelPricingTable.vue'
 import type { ModelPlazaGroup } from '@/api/modelPlaza'
 import type { GroupPlatform, SubscriptionType } from '@/types'
-import { platformBorderStrongClass } from '@/utils/platformColors'
 import { hasPeakRate, formatPeakRateWindow, serverTimezoneLabel } from '@/utils/peak-rate'
 import { useAppStore } from '@/stores/app'
 
+const groupChip = chipVariants({ size: 'sm' }).base()
 const props = defineProps<{
   group: ModelPlazaGroup
 }>()
@@ -121,3 +126,10 @@ const longContextNote = computed(() => {
   return hasOfficialLadder ? t('modelPlaza.detail.longContextDisabledNote') : ''
 })
 </script>
+
+<style scoped>
+.plaza-group[data-slot="card"] { padding: 0; gap: 0; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); }
+.pricing-frame { container-type: inline-size; }
+.group-heading { padding: 1.25rem; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.group-heading h2 > :deep(span) { max-width: 100%; font-size: 1rem; line-height: 1.5; }
+</style>

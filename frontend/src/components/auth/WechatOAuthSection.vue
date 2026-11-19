@@ -1,13 +1,13 @@
 <template>
   <div class="space-y-4">
-    <button type="button" :disabled="buttonDisabled" class="btn btn-secondary w-full" @click="startLogin">
+    <HeroButton variant="secondary" type="button" :disabled="buttonDisabled" full-width class="btn btn-secondary" @press="startLogin">
       <span
         class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300"
       >
         W
       </span>
       {{ t('auth.oidc.signIn', { providerName }) }}
-    </button>
+    </HeroButton>
 
     <p
       v-if="disabledHint"
@@ -28,6 +28,7 @@
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'

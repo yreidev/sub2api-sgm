@@ -102,6 +102,19 @@ describe('WechatPaymentCallbackView', () => {
     })
   })
 
+  it('carries the original assistant amount alongside the signed checkout token', async () => {
+    locationState.current.hash = '#' + new URLSearchParams({
+      wechat_resume_token: 'demo-signed-token',
+      redirect: '/dashboard?recharge=1&amount=50&order_type=balance',
+    })
+    const view = mount(WechatPaymentCallbackView)
+    await flushPromises()
+    expect(replaceMock).toHaveBeenCalledWith({ path: '/dashboard', query: {
+      recharge: '1', amount: '50', order_type: 'balance', wechat_resume: '1', wechat_resume_token: 'demo-signed-token',
+    } })
+    view.unmount()
+  })
+
   it('shows an error when the callback payload is missing the resume token', async () => {
     locationState.current.hash = '#payment_type=wxpay'
 

@@ -100,6 +100,105 @@ describe('PaymentStatusPanel', () => {
     expect(wrapper.emitted('success')).toHaveLength(1)
   })
 
+  it('keeps a charged but uncredited order open through fulfillment retry and credit', async () => {
+    const charged = { ...orderFactory('FAILED'), paid_at: '2026-04-20T12:01:00Z' }
+    pollOrderStatus.mockResolvedValueOnce(charged).mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(orderFactory('RECHARGING')).mockResolvedValueOnce(orderFactory('COMPLETED'))
+    const view = mount(PaymentStatusPanel, { props: {
+      orderId: charged.id, outTradeNo: charged.out_trade_no, qrCode: 'test-qr', payUrl: 'https://pay.example.com',
+      expiresAt: new Date(Date.now() + 4800).toISOString(), paymentType: 'alipay', waitForCredit: true,
+    } })
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(view.text()).toContain('payment.result.creditFailedHint')
+    expect(view.text()).toContain(charged.out_trade_no)
+    expect(view.find('canvas').exists()).toBe(false)
+    expect(view.findAll('button').map(b => b.text())).toEqual(['dashboard.assistantSetup.checkOrder'])
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(view.text()).toContain('payment.result.creditFailed')
+    expect(view.emitted('settled')).toBeUndefined()
+    await view.get('button').trigger('click')
+    await flushPromises()
+    expect(view.text()).toContain('dashboard.assistantSetup.settling')
+    expect(view.emitted('settled')).toBeUndefined()
+    await view.get('button').trigger('click')
+    await flushPromises()
+    expect(view.emitted('settled')).toEqual([['success']])
+    expect(view.emitted('done')).toBeUndefined()
+    view.unmount()
+  })
+
+  it.each([false, true])('allows exiting a full refund and stops polling (restored=%s)', async (initiallyRefunded) => {
+    pollOrderStatus.mockResolvedValue(orderFactory('REFUNDED'))
+    const view = mount(PaymentStatusPanel, { props: {
+      orderId: 42, qrCode: 'test-qr', expiresAt: '', paymentType: 'alipay', waitForCredit: true, initiallyRefunded,
+    } })
+    await vi.advanceTimersByTimeAsync(9000)
+    expect(pollOrderStatus).toHaveBeenCalledTimes(initiallyRefunded ? 0 : 1)
+    expect(view.text()).toContain('payment.status.refunded')
+    expect(view.find('canvas').exists()).toBe(false)
+    expect(view.emitted('success')).toBeUndefined()
+    await view.get('button').trigger('click')
+    expect(view.emitted('done')).toHaveLength(1)
+    view.unmount()
+  })
+
+  it('still reports an unpaid FAILED order as a terminal payment failure', async () => {
+    pollOrderStatus.mockResolvedValue(orderFactory('FAILED'))
+    const view = mount(PaymentStatusPanel, { props: {
+      orderId: 42, qrCode: '', expiresAt: '', paymentType: 'alipay', waitForCredit: true,
+    } })
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(view.text()).toContain('payment.result.failed')
+    expect(view.emitted('settled')).toEqual([['failed']])
+    await view.get('button').trigger('click')
+    expect(view.emitted('done')).toHaveLength(1)
+    view.unmount()
+  })
+
+  it('checks for credit after an inline order reaches its timer deadline', async () => {
+    pollOrderStatus.mockResolvedValueOnce(orderFactory('RECHARGING')).mockResolvedValue(orderFactory('COMPLETED'))
+    const wrapper = mount(PaymentStatusPanel, {
+      props: {
+        orderId: 42,
+        qrCode: '',
+        expiresAt: new Date(Date.now() - 1000).toISOString(),
+        paymentType: 'alipay',
+        orderType: 'balance',
+        waitForCredit: true,
+      },
+    })
+    await flushPromises()
+    expect(wrapper.text()).toContain('dashboard.assistantSetup.settling')
+    expect(wrapper.emitted('settled')).toBeUndefined()
+
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(wrapper.emitted('settled')).toEqual([['success']])
+    expect(wrapper.emitted('success')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('checks whether an inline order was already paid when the user tries to cancel it', async () => {
+    cancelOrder.mockResolvedValue({ data: { message: 'already_paid' } })
+    pollOrderStatus.mockResolvedValue(orderFactory('RECHARGING'))
+    const wrapper = mount(PaymentStatusPanel, {
+      props: {
+        orderId: 42,
+        qrCode: '',
+        expiresAt: '',
+        paymentType: 'alipay',
+        orderType: 'balance',
+        waitForCredit: true,
+      },
+    })
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(cancelOrder).toHaveBeenCalledWith(42)
+    expect(wrapper.text()).toContain('dashboard.assistantSetup.settling')
+    expect(wrapper.emitted('settled')).toBeUndefined()
+    wrapper.unmount()
+  })
+
   it('shows reopen button in QR mode when payUrl is also available', async () => {
     const openSpy = vi.spyOn(window, 'open').mockReturnValue({ closed: false } as Window)
 

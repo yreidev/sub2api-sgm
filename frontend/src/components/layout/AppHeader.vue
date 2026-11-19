@@ -155,6 +155,9 @@
               </div>
 
               <div class="py-1">
+                <button v-if="authStore.isAdmin" class="dropdown-item min-h-11 w-full" @click="openAssistantHome">
+                  {{ t('dashboard.assistantSetup.previewSimple') }}
+                </button>
                 <router-link to="/profile" @click="closeDropdown" class="dropdown-item">
                   <Icon name="user" size="sm" />
                   {{ t('nav.profile') }}
@@ -351,6 +354,11 @@ function toggleMobileSidebar() {
 
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
+}
+
+function openAssistantHome() {
+  closeDropdown()
+  void router.push({ path: '/dashboard', query: { view: 'simple' } })
 }
 
 function closeDropdown() {

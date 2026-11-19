@@ -1,11 +1,11 @@
 <template>
   <AuthLayout>
     <div class="space-y-6">
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div>
+        <h1 class="auth-heading">
           {{ t('auth.dingtalk.callbackTitle') }}
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        </h1>
+        <p class="auth-intro">
           {{ isProcessing ? t('auth.dingtalk.callbackProcessing') : t('auth.dingtalk.callbackHint') }}
         </p>
       </div>
@@ -36,11 +36,10 @@
                 </p>
               </div>
 
-              <label
+              <HeroCheckbox
                 v-if="suggestedDisplayName"
                 class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-dark-600 dark:bg-dark-900/50"
-              >
-                <input v-model="adoptDisplayName" type="checkbox" class="mt-1 h-4 w-4" />
+               v-model="adoptDisplayName">
                 <span class="space-y-1">
                   <span class="block font-medium text-gray-900 dark:text-white">
                     {{ t('auth.oauthFlow.useDisplayName') }}
@@ -49,13 +48,12 @@
                     {{ suggestedDisplayName }}
                   </span>
                 </span>
-              </label>
+              </HeroCheckbox>
 
-              <label
+              <HeroCheckbox
                 v-if="suggestedAvatarUrl"
                 class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-dark-600 dark:bg-dark-900/50"
-              >
-                <input v-model="adoptAvatar" type="checkbox" class="mt-1 h-4 w-4" />
+               v-model="adoptAvatar">
                 <img
                   :src="suggestedAvatarUrl"
                   :alt="t('auth.oauthFlow.avatarAlt', { providerName })"
@@ -69,7 +67,7 @@
                     {{ suggestedAvatarUrl }}
                   </span>
                 </span>
-              </label>
+              </HeroCheckbox>
             </div>
           </div>
 
@@ -78,7 +76,7 @@
               {{ t('auth.dingtalk.invitationRequired') }}
             </p>
             <div>
-              <input
+              <HeroInput
                 v-model="invitationCode"
                 type="text"
                 class="input w-full"
@@ -87,22 +85,22 @@
                 @keyup.enter="handleSubmitInvitation"
               />
             </div>
-            <button
-              class="btn btn-primary w-full"
+            <HeroButton variant="primary"
+              full-width class="btn btn-primary"
               :disabled="isSubmitting || !invitationCode.trim()"
-              @click="handleSubmitInvitation"
+              @press="handleSubmitInvitation"
             >
               {{ isSubmitting ? t('auth.dingtalk.completing') : t('auth.dingtalk.completeRegistration') }}
-            </button>
+            </HeroButton>
           </template>
 
           <template v-else-if="needsAdoptionConfirmation">
             <p class="text-sm text-gray-700 dark:text-gray-300">
               {{ t('auth.oauthFlow.reviewProfileBeforeContinue', { providerName }) }}
             </p>
-            <button class="btn btn-primary w-full" :disabled="isSubmitting" @click="handleContinueLogin">
+            <HeroButton variant="primary" full-width class="btn btn-primary" :disabled="isSubmitting" @press="handleContinueLogin">
               {{ isSubmitting ? t('common.processing') : t('auth.continue') }}
-            </button>
+            </HeroButton>
           </template>
 
           <template v-else-if="needsChooser">
@@ -122,20 +120,20 @@
                 </div>
 
                 <div class="grid gap-3 sm:grid-cols-2">
-                  <button
-                    class="btn btn-secondary w-full"
+                  <HeroButton variant="secondary"
+                    full-width class="btn btn-secondary"
                     :disabled="isSubmitting"
-                    @click="switchToBindLoginMode()"
+                    @press="switchToBindLoginMode()"
                   >
                     {{ t('auth.oauthFlow.bindExistingAccount') }}
-                  </button>
-                  <button
-                    class="btn btn-primary w-full"
+                  </HeroButton>
+                  <HeroButton variant="primary"
+                    full-width class="btn btn-primary"
                     :disabled="isSubmitting"
-                    @click="switchToCreateAccountMode"
+                    @press="switchToCreateAccountMode"
                   >
                     {{ t('auth.oauthFlow.createNewAccount') }}
-                  </button>
+                  </HeroButton>
                 </div>
               </div>
             </div>
@@ -160,7 +158,7 @@
               {{ t('auth.oauthFlow.bindLoginHint', { providerName }) }}
             </p>
             <div class="space-y-3">
-              <input
+              <HeroInput
                 v-model="bindLoginEmail"
                 data-testid="dingtalk-bind-login-email"
                 type="email"
@@ -169,7 +167,7 @@
                 :disabled="isSubmitting"
                 @keyup.enter="handleBindLogin"
               />
-              <input
+              <HeroInput
                 v-model="bindLoginPassword"
                 data-testid="dingtalk-bind-login-password"
                 type="password"
@@ -178,22 +176,22 @@
                 :disabled="isSubmitting"
                 @keyup.enter="handleBindLogin"
               />
-              <button
+              <HeroButton variant="primary"
                 data-testid="dingtalk-bind-login-submit"
-                class="btn btn-primary w-full"
+                full-width class="btn btn-primary"
                 :disabled="isSubmitting || !bindLoginEmail.trim() || !bindLoginPassword"
-                @click="handleBindLogin"
+                @press="handleBindLogin"
               >
                 {{ isSubmitting ? t('common.processing') : t('auth.oauthFlow.logInAndBind') }}
-              </button>
-              <button
+              </HeroButton>
+              <HeroButton variant="secondary"
                 v-if="canReturnToCreateAccount"
-                class="btn btn-secondary w-full"
+                full-width class="btn btn-secondary"
                 :disabled="isSubmitting"
-                @click="switchToCreateAccountMode"
+                @press="switchToCreateAccountMode"
               >
                 {{ t('auth.oauthFlow.useDifferentEmail') }}
-              </button>
+              </HeroButton>
             </div>
           </template>
 
@@ -207,7 +205,7 @@
               }}
             </p>
             <div class="space-y-3">
-              <input
+              <HeroInput
                 v-model="totpCode"
                 data-testid="dingtalk-bind-login-totp"
                 type="text"
@@ -218,14 +216,14 @@
                 :disabled="isSubmitting"
                 @keyup.enter="handleSubmitTotpChallenge"
               />
-              <button
+              <HeroButton variant="primary"
                 data-testid="dingtalk-bind-login-totp-submit"
-                class="btn btn-primary w-full"
+                full-width class="btn btn-primary"
                 :disabled="isSubmitting || totpCode.trim().length !== 6"
-                @click="handleSubmitTotpChallenge"
+                @press="handleSubmitTotpChallenge"
               >
                 {{ isSubmitting ? t('common.processing') : t('auth.oauthFlow.verifyAndContinue') }}
-              </button>
+              </HeroButton>
             </div>
           </template>
         </div>
@@ -235,6 +233,9 @@
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
+import HeroCheckbox from '@/components/hero/HeroCheckbox.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'

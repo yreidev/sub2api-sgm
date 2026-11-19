@@ -72,6 +72,13 @@ function simulateGuard(
     return resolveCompletedSetupRedirectPath(authState.isAuthenticated, authState.isAdmin)
   }
 
+  if (authState.isAuthenticated && !authState.isAdmin && (
+    (requiresAuth && !['/dashboard', '/oauth/mcp/authorize'].includes(toPath)) ||
+    ['/home', '/setup', '/model-plaza', '/key-usage'].includes(toPath)
+  )) {
+    return authState.backendModeEnabled ? '/login' : '/dashboard'
+  }
+
   // 不需要认证的路由
   if (!requiresAuth) {
     if (
@@ -321,7 +328,7 @@ describe('路由守卫逻辑', () => {
       expect(redirect).toBeNull()
     })
 
-    it('简易模式下 /keys 正常访问', () => {
+    it('简易模式下普通用户访问 /keys 返回首页', () => {
       const authState: MockAuthState = {
         isAuthenticated: true,
         isAdmin: false,
@@ -330,7 +337,7 @@ describe('路由守卫逻辑', () => {
         hasPendingAuthSession: false,
       }
       const redirect = simulateGuard('/keys', {}, authState)
-      expect(redirect).toBeNull()
+      expect(redirect).toBe('/dashboard')
     })
   })
 
@@ -457,7 +464,7 @@ describe('路由守卫逻辑', () => {
       expect(redirect).toBeNull()
     })
 
-    it('non-admin authenticated: /key-usage is allowed', () => {
+    it('non-admin authenticated: /key-usage returns to login in backend mode', () => {
       const authState: MockAuthState = {
         isAuthenticated: true,
         isAdmin: false,
@@ -466,7 +473,7 @@ describe('路由守卫逻辑', () => {
         hasPendingAuthSession: false,
       }
       const redirect = simulateGuard('/key-usage', { requiresAuth: false }, authState)
-      expect(redirect).toBeNull()
+      expect(redirect).toBe('/login')
     })
 
     it('unauthenticated: callback routes are allowed', () => {

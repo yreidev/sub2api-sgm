@@ -71,6 +71,12 @@ if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
   })) as unknown as typeof window.matchMedia
 }
 
+// jsdom lacks CSS.escape, which React Aria uses to look up generated DOM IDs.
+if (typeof globalThis.CSS?.escape !== 'function') {
+  vi.stubGlobal('CSS', { ...globalThis.CSS, escape: (value: string) =>
+    Array.from(value, char => '\\' + char.codePointAt(0)!.toString(16) + ' ').join('') })
+}
+
 // Mock IntersectionObserver
 class MockIntersectionObserver {
   observe = vi.fn()

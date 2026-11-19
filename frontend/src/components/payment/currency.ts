@@ -42,14 +42,19 @@ function paymentCurrencyFractionDigits(currency: string): number {
   }
 }
 
-export function formatPaymentAmount(amount: number, currency?: string | null, locale?: string): string {
+export function formatPaymentAmount(
+  amount: number,
+  currency?: string | null,
+  locale?: string,
+  currencyDisplay: Intl.NumberFormatOptions['currencyDisplay'] = 'narrowSymbol',
+): string {
   const normalized = normalizePaymentCurrency(currency)
   const fractionDigits = paymentCurrencyFractionDigits(normalized)
   try {
     return new Intl.NumberFormat(locale || undefined, {
       style: 'currency',
       currency: normalized,
-      currencyDisplay: 'narrowSymbol',
+      currencyDisplay,
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits,
     }).format(Number.isFinite(amount) ? amount : 0)

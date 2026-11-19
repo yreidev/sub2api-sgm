@@ -29,16 +29,18 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import { useAuthStore } from '@/stores/auth'
+import { paymentAPI } from '@/api/payment'
 import Icon from '@/components/icons/Icon.vue'
 import {
-  PAYMENT_RECOVERY_STORAGE_KEY,
-  readPaymentRecoverySnapshot,
+  readCheckoutSnapshot,
   type PaymentRecoverySnapshot,
 } from '@/components/payment/paymentFlow'
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const errorMessage = ref('')
@@ -64,36 +66,13 @@ function buildSuccessUrl(snapshot: PaymentRecoverySnapshot): string {
   return url.toString()
 }
 
-function restoreAirwallexSnapshot(): PaymentRecoverySnapshot | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  const orderId = Number(queryString('order_id')) || 0
-  const outTradeNo = queryString('out_trade_no')
-  const resumeToken = queryString('resume_token')
-  const snapshot = readPaymentRecoverySnapshot(
-    window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY),
-    resumeToken ? { resumeToken } : {},
-  )
-
-  if (!snapshot || snapshot.paymentType !== 'airwallex') {
-    return null
-  }
-  if (orderId > 0 && snapshot.orderId !== orderId) {
-    return null
-  }
-  if (outTradeNo && snapshot.outTradeNo !== outTradeNo) {
-    return null
-  }
-  if (!snapshot.intentId || !snapshot.clientSecret) {
-    return null
-  }
-  return snapshot
-}
-
 onMounted(async () => {
-  const snapshot = restoreAirwallexSnapshot()
+  const orderId = queryString('order_id')
+  const snapshot = readCheckoutSnapshot(window.localStorage, authStore.user?.id, 'airwallex', {
+    orderId: orderId ? Number(orderId) : undefined,
+    outTradeNo: queryString('out_trade_no'),
+    resumeToken: queryString('resume_token'),
+  })
   const checkoutLocale = locale.value.toLowerCase().startsWith('zh') ? 'zh' : 'en'
 
   if (!snapshot) {
@@ -103,6 +82,16 @@ onMounted(async () => {
   }
 
   try {
+    if (authStore.user) {
+      // The authenticated order lookup also checks ownership of legacy, unscoped snapshots.
+      const { data: order } = await paymentAPI.getOrder(snapshot.orderId)
+      if (disposed) return
+      if (order.status !== 'PENDING') {
+        const result = new URL(buildSuccessUrl(snapshot))
+        await router.replace({ path: result.pathname, query: Object.fromEntries(result.searchParams) })
+        return
+      }
+    }
     const airwallex = await import('@airwallex/components-sdk')
     if (disposed) return
     const result = await airwallex.init({

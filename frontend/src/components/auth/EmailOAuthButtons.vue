@@ -9,23 +9,24 @@
     </div>
 
     <div :class="providerGridClass">
-      <button
+      <HeroButton variant="secondary"
         v-for="provider in visibleProviders"
         :key="provider"
         type="button"
         :disabled="disabled"
-        class="btn btn-secondary h-12 w-full justify-center gap-2"
-        @click="startLogin(provider)"
+        full-width class="btn btn-secondary h-12 justify-center gap-2"
+        @press="startLogin(provider)"
       >
         <GitHubMark v-if="provider === 'github'" class="h-5 w-5 text-gray-800 dark:text-gray-100" />
         <GoogleMark v-else class="h-5 w-5" />
         <span class="font-medium">{{ providerLabel(provider) }}</span>
-      </button>
+      </HeroButton>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'

@@ -1,51 +1,26 @@
 <template>
-  <div class="space-y-5">
-    <!-- 页头(独立形态下展示标题;后台形态 AppHeader 已有页面标题) -->
-    <div v-if="!embedded">
-      <h1 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">{{ t('modelPlaza.title') }}</h1>
-      <p class="mt-1.5 text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.description') }}</p>
-    </div>
+  <div class="plaza-content" :class="{ 'public-palette': embedded, 'plaza-page': !embedded }">
+    <HeroCard as="header" v-if="!embedded" class="plaza-hero">
+      <h1>{{ t('modelPlaza.title') }}</h1>
+      <p>{{ t('modelPlaza.description') }}</p>
+    </HeroCard>
 
-    <!-- 全局价格说明(管理员配置,Markdown) -->
-    <div
-      v-if="descriptionHtml"
-      class="plaza-description rounded-2xl border border-gray-100 bg-white px-5 py-4 text-sm shadow-card dark:border-dark-700/50 dark:bg-dark-800/50"
-      v-html="descriptionHtml"
-    ></div>
-
-    <!-- 未登录提示 -->
-    <p
-      v-if="!isAuthenticated"
-      class="flex items-center gap-1.5 text-xs text-gray-400 dark:text-dark-500"
-    >
-      <Icon name="infoCircle" size="xs" class="h-3.5 w-3.5" />
-      {{ t('modelPlaza.anonymousHint') }}
-    </p>
-
-    <!-- 加载/错误/空 -->
-    <div v-if="loading" class="flex min-h-[240px] items-center justify-center">
-      <div class="h-8 w-8 animate-spin rounded-full border-2 border-primary-600/25 border-t-primary-600 dark:border-primary-400/25 dark:border-t-primary-400"></div>
-    </div>
-    <div
-      v-else-if="error"
-      class="rounded-2xl border border-red-200 bg-red-50 px-5 py-8 text-center text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
-    >
-      {{ t('modelPlaza.loadFailed') }}
-    </div>
+    <HeroCard v-if="descriptionHtml" class="plaza-description plaza-panel"><div v-html="descriptionHtml"></div></HeroCard>
+    <p v-if="loading" role="status" class="plaza-status plaza-panel">{{ t('modelPlaza.loading') }}</p>
+    <HeroCard v-else-if="error" class="plaza-status plaza-panel">
+      <p role="alert">{{ t('modelPlaza.loadFailed') }}</p>
+      <HeroButton variant="primary" type="button" class="plaza-retry" @press="$emit('retry')">{{ t('common.tryAgain') }}</HeroButton>
+    </HeroCard>
     <template v-else>
       <!-- 筛选区:平台 → 分组 → 倍率 -->
       <PlazaFilterBar
         :platforms="platforms"
         :groups="groupOptions"
         :rates="rates"
-        :platform="selectedPlatform"
-        :group-id="selectedGroupId"
-        :rate="selectedRate"
-        :search="searchQuery"
-        @update:platform="selectedPlatform = $event"
-        @update:group-id="selectedGroupId = $event"
-        @update:rate="selectedRate = $event"
-        @update:search="searchQuery = $event"
+        v-model:platform="selectedPlatform"
+        v-model:group-id="selectedGroupId"
+        v-model:rate="selectedRate"
+        v-model:search="searchQuery"
       />
 
       <!-- 分组分节的模型清单(默认按生效倍率升序) -->
@@ -54,7 +29,7 @@
       </div>
       <div
         v-else
-        class="rounded-2xl border border-dashed border-gray-300 px-5 py-12 text-center text-sm text-gray-500 dark:border-dark-600 dark:text-dark-400"
+        role="status" class="plaza-status plaza-panel"
       >
         {{ searchActive ? t('modelPlaza.noSearchResult') : t('modelPlaza.empty') }}
       </div>
@@ -63,15 +38,15 @@
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroCard from '@/components/hero/HeroCard.vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-import Icon from '@/components/icons/Icon.vue'
 import PlazaFilterBar from './PlazaFilterBar.vue'
 import PlazaGroupSection from './PlazaGroupSection.vue'
 import type { ModelPlazaGroup, ModelPlazaResponse } from '@/api/modelPlaza'
-import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps<{
   response: ModelPlazaResponse | null
@@ -82,8 +57,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const authStore = useAuthStore()
-const isAuthenticated = computed(() => authStore.isAuthenticated)
+defineEmits<{ retry: [] }>()
 
 const selectedPlatform = ref<string>('all')
 const selectedGroupId = ref<number | 'all'>('all')
@@ -154,7 +128,17 @@ const filteredGroups = computed(() => {
 </script>
 
 <style scoped>
+.plaza-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; color: var(--ink); }
+.plaza-page { padding-block: clamp(1.5rem, 4vw, 3rem); }
+.plaza-hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(1.4rem, 4vw, 2.75rem); border: 1px solid var(--line); border-radius: 18px; background: var(--tint); }
+.plaza-hero::before { content: ""; position: absolute; z-index: -1; inset: 0 0 0 35%; background: url('../../assets/sgm-balance-wave.webp') right center / cover; opacity: var(--wave-opacity); mask-image: linear-gradient(90deg, transparent, black); }
+.plaza-hero h1 { font-size: clamp(1.75rem, 3.6vw, 2.5rem); font-weight: 500; letter-spacing: -.035em; line-height: 1.2; }
+.plaza-hero p { margin-top: .5rem; color: var(--muted); line-height: 1.6; }
+.plaza-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; }
+.plaza-status { padding: 2.5rem 1rem; text-align: center; color: var(--muted); }
+.plaza-retry { margin-top: .75rem; min-height: 44px; padding: .5rem 1rem; border-radius: 10px; background: var(--accent); color: var(--on-accent); }
 .plaza-description {
+  padding: 1rem 1.25rem;
   line-height: 1.7;
   overflow-wrap: anywhere;
 }

@@ -223,7 +223,7 @@ describe('LinuxDoCallbackView', () => {
     expect(replace).not.toHaveBeenCalled()
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
-    await checkboxes[1].setValue(false)
+    await checkboxes[1].trigger('click')
 
     const buttons = wrapper.findAll('button')
     expect(buttons).toHaveLength(1)
@@ -427,7 +427,7 @@ describe('LinuxDoCallbackView', () => {
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
 
-    await checkboxes[0].setValue(false)
+    await checkboxes[0].trigger('click')
     await wrapper.find('input[type="text"]').setValue('invite-code')
     await wrapper.find('button').trigger('click')
 
@@ -519,7 +519,7 @@ describe('LinuxDoCallbackView', () => {
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[1].setValue(false)
+    await checkboxes[1].trigger('click')
     await wrapper.get('[data-testid="linuxdo-create-account-email"]').setValue('  new@example.com  ')
     await wrapper.get('[data-testid="linuxdo-create-account-password"]').setValue('secret-123')
     await wrapper.get('[data-testid="linuxdo-create-account-verify-code"]').setValue('246810')
@@ -669,7 +669,7 @@ describe('LinuxDoCallbackView', () => {
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[0].setValue(false)
+    await checkboxes[0].trigger('click')
     await wrapper.get('[data-testid="linuxdo-bind-login-email"]').setValue('existing@example.com')
     await wrapper.get('[data-testid="linuxdo-bind-login-password"]').setValue('secret-password')
     await wrapper.get('[data-testid="linuxdo-bind-login-submit"]').trigger('click')

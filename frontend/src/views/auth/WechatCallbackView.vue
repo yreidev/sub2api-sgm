@@ -1,11 +1,11 @@
 <template>
   <AuthLayout>
     <div class="space-y-6">
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div>
+        <h1 class="auth-heading">
           {{ t('auth.oidc.callbackTitle', { providerName }) }}
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        </h1>
+        <p class="auth-intro">
           {{
             isProcessing
               ? t('auth.oidc.callbackProcessing', { providerName })
@@ -40,11 +40,10 @@
                 </p>
               </div>
 
-              <label
+              <HeroCheckbox
                 v-if="suggestedDisplayName"
                 class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-dark-600 dark:bg-dark-900/50"
-              >
-                <input v-model="adoptDisplayName" type="checkbox" class="mt-1 h-4 w-4" />
+               v-model="adoptDisplayName">
                 <span class="space-y-1">
                   <span class="block font-medium text-gray-900 dark:text-white">
                     {{ t('auth.oauthFlow.useDisplayName') }}
@@ -53,13 +52,12 @@
                     {{ suggestedDisplayName }}
                   </span>
                 </span>
-              </label>
+              </HeroCheckbox>
 
-              <label
+              <HeroCheckbox
                 v-if="suggestedAvatarUrl"
                 class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-dark-600 dark:bg-dark-900/50"
-              >
-                <input v-model="adoptAvatar" type="checkbox" class="mt-1 h-4 w-4" />
+               v-model="adoptAvatar">
                 <img
                   :src="suggestedAvatarUrl"
                   :alt="t('auth.oauthFlow.avatarAlt', { providerName })"
@@ -73,7 +71,7 @@
                     {{ suggestedAvatarUrl }}
                   </span>
                 </span>
-              </label>
+              </HeroCheckbox>
             </div>
           </div>
 
@@ -82,7 +80,7 @@
               {{ t('auth.oidc.invitationRequired', { providerName }) }}
             </p>
             <div>
-              <input
+              <HeroInput
                 v-model="invitationCode"
                 type="text"
                 class="input w-full"
@@ -91,17 +89,17 @@
                 @keyup.enter="handleSubmitInvitation"
               />
             </div>
-            <button
-              class="btn btn-primary w-full"
+            <HeroButton variant="primary"
+              full-width class="btn btn-primary"
               :disabled="isSubmitting || !invitationCode.trim()"
-              @click="handleSubmitInvitation"
+              @press="handleSubmitInvitation"
             >
               {{
                 isSubmitting
                   ? t('auth.oidc.completing')
                 : t('auth.oidc.completeRegistration')
               }}
-            </button>
+            </HeroButton>
 
             <div
               class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60"
@@ -120,7 +118,7 @@
                   </p>
                 </div>
 
-                <input
+                <HeroInput
                   v-if="!hasCurrentAuthToken"
                   v-model="existingAccountEmail"
                   data-testid="existing-account-email"
@@ -130,15 +128,15 @@
                   :disabled="isSubmitting"
                 />
 
-                <button
+                <HeroButton variant="secondary"
                   data-testid="existing-account-submit"
                   type="button"
-                  class="btn btn-secondary w-full"
+                  full-width class="btn btn-secondary"
                   :disabled="isSubmitting"
-                  @click="handleExistingAccountBinding"
+                  @press="handleExistingAccountBinding"
                 >
                   {{ hasCurrentAuthToken ? t('auth.oauthFlow.bindCurrentAccount') : t('auth.signIn') }}
-                </button>
+                </HeroButton>
               </div>
             </div>
           </template>
@@ -157,25 +155,25 @@
                   </p>
                 </div>
 
-                <button
+                <HeroButton variant="primary"
                   data-testid="wechat-choice-bind-existing"
                   type="button"
-                  class="btn btn-primary w-full"
+                  full-width class="btn btn-primary"
                   :disabled="isSubmitting"
-                  @click="switchToBindLoginMode()"
+                  @press="switchToBindLoginMode()"
                 >
                   {{ t('auth.oauthFlow.bindExistingAccount') }}
-                </button>
+                </HeroButton>
 
-                <button
+                <HeroButton variant="secondary"
                   data-testid="wechat-choice-create-account"
                   type="button"
-                  class="btn btn-secondary w-full"
+                  full-width class="btn btn-secondary"
                   :disabled="isSubmitting"
-                  @click="switchToCreateAccountMode()"
+                  @press="switchToCreateAccountMode()"
                 >
                   {{ t('auth.oauthFlow.createNewAccount') }}
-                </button>
+                </HeroButton>
               </div>
             </div>
           </template>
@@ -184,9 +182,9 @@
             <p class="text-sm text-gray-700 dark:text-gray-300">
               {{ t('auth.oauthFlow.reviewProfileBeforeContinue', { providerName }) }}
             </p>
-            <button class="btn btn-primary w-full" :disabled="isSubmitting" @click="handleContinueLogin">
+            <HeroButton variant="primary" full-width class="btn btn-primary" :disabled="isSubmitting" @press="handleContinueLogin">
               {{ isSubmitting ? t('common.processing') : t('auth.continue') }}
-            </button>
+            </HeroButton>
           </template>
 
           <template v-else-if="needsCreateAccount">
@@ -201,14 +199,14 @@
               @submit="handleCreateAccount"
               @switch-to-bind="switchToBindLoginMode"
             />
-            <button
+            <HeroButton variant="secondary"
               v-if="showBackToChooser"
-              class="btn btn-secondary w-full"
+              full-width class="btn btn-secondary"
               :disabled="isSubmitting"
-              @click="switchToCreateAccountMode()"
+              @press="switchToCreateAccountMode()"
             >
               {{ t('auth.oauthFlow.createNewAccount') }}
-            </button>
+            </HeroButton>
           </template>
 
           <template v-else-if="needsBindLogin">
@@ -229,19 +227,19 @@
                   </p>
                 </div>
 
-                <button
+                <HeroButton variant="primary"
                   data-testid="existing-account-submit"
                   type="button"
-                  class="btn btn-primary w-full"
+                  full-width class="btn btn-primary"
                   :disabled="isSubmitting"
-                  @click="handleBindCurrentAccount"
+                  @press="handleBindCurrentAccount"
                 >
                   {{ isSubmitting ? t('common.processing') : t('auth.oauthFlow.bindCurrentAccount') }}
-                </button>
+                </HeroButton>
               </div>
             </div>
             <div v-else class="space-y-3">
-              <input
+              <HeroInput
                 v-model="bindLoginEmail"
                 data-testid="wechat-bind-login-email"
                 type="email"
@@ -250,7 +248,7 @@
                 :disabled="isSubmitting"
                 @keyup.enter="handleBindLogin"
               />
-              <input
+              <HeroInput
                 v-model="bindLoginPassword"
                 data-testid="wechat-bind-login-password"
                 type="password"
@@ -259,23 +257,23 @@
                 :disabled="isSubmitting"
                 @keyup.enter="handleBindLogin"
               />
-              <button
+              <HeroButton variant="primary"
                 data-testid="wechat-bind-login-submit"
-                class="btn btn-primary w-full"
+                full-width class="btn btn-primary"
                 :disabled="isSubmitting || !bindLoginEmail.trim() || !bindLoginPassword"
-                @click="handleBindLogin"
+                @press="handleBindLogin"
               >
                 {{ isSubmitting ? t('common.processing') : t('auth.oauthFlow.logInAndBind') }}
-              </button>
+              </HeroButton>
             </div>
-            <button
+            <HeroButton variant="secondary"
               v-if="showBackToChooser"
-              class="btn btn-secondary w-full"
+              full-width class="btn btn-secondary"
               :disabled="isSubmitting"
-              @click="switchToCreateAccountMode()"
+              @press="switchToCreateAccountMode()"
             >
               {{ t('auth.oauthFlow.createNewAccount') }}
-            </button>
+            </HeroButton>
           </template>
 
           <template v-else-if="needsTotpChallenge">
@@ -288,7 +286,7 @@
               }}
             </p>
             <div class="space-y-3">
-              <input
+              <HeroInput
                 v-model="totpCode"
                 data-testid="wechat-bind-login-totp"
                 type="text"
@@ -299,14 +297,14 @@
                 :disabled="isSubmitting"
                 @keyup.enter="handleSubmitTotpChallenge"
               />
-              <button
+              <HeroButton variant="primary"
                 data-testid="wechat-bind-login-totp-submit"
-                class="btn btn-primary w-full"
+                full-width class="btn btn-primary"
                 :disabled="isSubmitting || totpCode.trim().length !== 6"
-                @click="handleSubmitTotpChallenge"
+                @press="handleSubmitTotpChallenge"
               >
                 {{ isSubmitting ? t('common.processing') : t('auth.oauthFlow.verifyAndContinue') }}
-              </button>
+              </HeroButton>
             </div>
           </template>
         </div>
@@ -316,6 +314,9 @@
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
+import HeroCheckbox from '@/components/hero/HeroCheckbox.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'

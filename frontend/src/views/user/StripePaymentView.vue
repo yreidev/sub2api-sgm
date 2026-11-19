@@ -102,7 +102,8 @@ import { paymentAPI } from '@/api/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import { isMobileDevice } from '@/utils/device'
 import { formatPaymentAmount, normalizePaymentCurrency } from '@/components/payment/currency'
-import { PAYMENT_RECOVERY_STORAGE_KEY, readPaymentRecoverySnapshot } from '@/components/payment/paymentFlow'
+import { useAuthStore } from '@/stores/auth'
+import { paymentSettlementState, readCheckoutSnapshot } from '@/components/payment/paymentFlow'
 import type { PaymentOrder } from '@/types/payment'
 import type { Stripe, StripeElements } from '@stripe/stripe-js'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -113,6 +114,7 @@ const { t } = i18n
 const route = useRoute()
 const router = useRouter()
 const paymentStore = usePaymentStore()
+const authStore = useAuthStore()
 
 // 弹窗模式：指定支付宝或微信方式时跳过 AppLayout
 const isPopup = computed(() => !!route.query.method)
@@ -137,23 +139,27 @@ let redirectTimer: ReturnType<typeof setTimeout> | null = null
 onMounted(async () => {
   const orderId = Number(route.query.order_id)
   const method = String(route.query.method || '')
-  const resumeToken = typeof route.query.resume_token === 'string' ? route.query.resume_token : undefined
-  // client_secret 只从本浏览器下单时写入的恢复快照读取，且快照订单必须与 URL 订单一致：
-  // 不信任 URL 中的 client_secret，避免页面展示的订单与实际收款的 PaymentIntent 被拼接错绑。
-  const restored = typeof window !== 'undefined'
-    ? readPaymentRecoverySnapshot(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY), { resumeToken })
+  const resumeToken = route.query.resume_token
+  const outTradeNo = route.query.out_trade_no
+  const restored = typeof resumeToken !== 'object' && typeof outTradeNo !== 'object'
+    ? readCheckoutSnapshot(window.localStorage, authStore.user?.id, 'stripe', { orderId, resumeToken, outTradeNo })
     : null
-  const clientSecret = orderId && restored?.orderId === orderId ? restored.clientSecret : ''
 
-  if (!orderId || !clientSecret) {
+  if (!orderId || !restored) {
     loading.value = false
     initError.value = t('payment.stripeMissingParams')
     return
   }
 
   try {
-    currency.value = normalizePaymentCurrency(restored?.currency)
+    const clientSecret = restored.clientSecret
+    currency.value = normalizePaymentCurrency(restored.currency)
     const res = await paymentAPI.getOrder(orderId)
+    if (disposed) return
+    if (res.data.status !== 'PENDING') {
+      await router.replace({ path: '/payment/result', query: { order_id: String(orderId), resume_token: restored.resumeToken || undefined } })
+      return
+    }
     order.value = res.data
     if (res.data.currency) {
       currency.value = normalizePaymentCurrency(res.data.currency)
@@ -287,7 +293,13 @@ function startPolling() {
   if (!orderId || disposed) return
   pollTimer = setInterval(async () => {
     const o = await paymentStore.pollOrderStatus(orderId)
-    if (!o) return
+    if (!o || disposed) return
+    if (paymentSettlementState(o) === 'credit_failed') {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+      wechatQrUrl.value = ''
+      await router.replace({ path: '/payment/result', query: { order_id: String(orderId) } })
+      return
+    }
     if (o.status === 'COMPLETED' || o.status === 'PAID') {
       if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
       stripeSuccess.value = true

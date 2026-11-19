@@ -1,5 +1,13 @@
 <template>
-  <Teleport to="body">
+  <HeroModal v-if="hero && displayedAnnouncement" :label="displayedAnnouncement.title">
+    <h2 class="text-xl font-semibold">{{ displayedAnnouncement.title }}</h2>
+    <time class="text-sm">{{ formatRelativeWithDateTime(displayedAnnouncement.created_at) }}</time>
+    <div class="markdown-body prose prose-sm my-4 max-w-none dark:prose-invert" v-html="renderedContent"></div>
+    <HeroButton variant="primary" data-testid="announcement-popup-dismiss" @press="handleDismiss">
+      {{ t('announcements.markRead') }}
+    </HeroButton>
+  </HeroModal>
+  <Teleport v-if="!hero" to="body">
     <Transition name="popup-fade">
       <div
         v-if="displayedAnnouncement"
@@ -88,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -97,10 +105,14 @@ import { formatRelativeWithDateTime } from '@/utils/format'
 import type { Announcement, UserAnnouncement } from '@/types'
 import '@/styles/announcement-markdown.css'
 
+const HeroModal = defineAsyncComponent(() => import('@/components/hero/HeroModal.vue'))
+const HeroButton = defineAsyncComponent(() => import('@/components/hero/HeroButton.vue'))
+
 type PreviewAnnouncement = Pick<Announcement | UserAnnouncement, 'title' | 'content' | 'created_at'>
 
 const props = withDefaults(defineProps<{
   announcement?: PreviewAnnouncement | null
+  hero?: boolean
   preview?: boolean
 }>(), {
   announcement: null,
@@ -141,6 +153,7 @@ function handleDismiss() {
 watch(
   displayedAnnouncement,
   (popup) => {
+    if (props.hero) return
     if (popup) {
       document.body.style.overflow = 'hidden'
     } else if (props.preview) {

@@ -2,18 +2,22 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div>
+        <h1 class="auth-heading">
           {{ t('auth.createAccount') }}
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        </h1>
+        <p v-if="registrationEnabled && !settingsFailed" class="auth-intro">
           {{ t('auth.signUpToStart', { siteName }) }}
         </p>
       </div>
 
       <!-- Registration Disabled Message -->
+      <div v-if="settingsFailed" class="space-y-3" role="alert">
+        <p>{{ t('auth.registrationSettingsUnavailable') }}</p>
+        <HeroButton variant="secondary" type="button" class="btn btn-secondary" @press="loadRegistrationSettings">{{ t('common.tryAgain') }}</HeroButton>
+      </div>
       <div
-        v-if="!registrationEnabled && settingsLoaded"
+        v-else-if="!registrationEnabled"
         class="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20"
       >
         <div class="flex items-start gap-3">
@@ -37,7 +41,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="email"
               v-model="formData.email"
               type="email"
@@ -61,7 +65,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="password"
               v-model="formData.password"
               :type="showPassword ? 'text' : 'password'"
@@ -72,15 +76,16 @@
               :class="{ 'input-error': errors.password }"
               :placeholder="t('auth.createPasswordPlaceholder')"
             />
-            <button
+            <HeroButton icon-only
               type="button"
               :disabled="registrationActionDisabled"
-              @click="showPassword = !showPassword"
+              :aria-label="t(showPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
+              @press="showPassword = !showPassword"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
-            </button>
+            </HeroButton>
           </div>
           <p class="input-hint">
             {{ t('auth.passwordHint') }}
@@ -96,7 +101,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="confirmPassword"
               v-model="confirmPassword"
               :type="showConfirmPassword ? 'text' : 'password'"
@@ -107,15 +112,16 @@
               :class="{ 'input-error': errors.confirmPassword }"
               :placeholder="t('auth.confirmPasswordPlaceholder')"
             />
-            <button
+            <HeroButton icon-only
               type="button"
               :disabled="registrationActionDisabled"
-              @click="showConfirmPassword = !showConfirmPassword"
+              :aria-label="t(showConfirmPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
+              @press="showConfirmPassword = !showConfirmPassword"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
               <Icon v-if="showConfirmPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
-            </button>
+            </HeroButton>
           </div>
         </div>
 
@@ -128,7 +134,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="key" size="md" :class="invitationValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
             </div>
-            <input
+            <HeroInput
               id="invitation_code"
               v-model="formData.invitation_code"
               type="text"
@@ -176,7 +182,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="key" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="affiliate_code"
               v-model="formData.aff_code"
               type="text"
@@ -197,7 +203,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="gift" size="md" :class="promoValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
             </div>
-            <input
+            <HeroInput
               id="promo_code"
               v-model="formData.promo_code"
               type="text"
@@ -267,10 +273,10 @@
         />
 
         <!-- Submit Button -->
-        <button
+        <HeroButton variant="primary"
           type="submit"
           :disabled="registrationActionDisabled || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary w-full"
+          full-width class="btn btn-primary"
         >
           <svg
             v-if="isLoading"
@@ -300,11 +306,11 @@
                 ? t('auth.continue')
                 : t('auth.createAccount')
           }}
-        </button>
+        </HeroButton>
 
       </form>
 
-      <div v-if="showOAuthLogin" class="space-y-3 pt-1">
+      <div v-if="registrationEnabled && !settingsFailed && showOAuthLogin" class="space-y-3 pt-1">
         <div class="flex items-center gap-3">
           <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
           <span class="text-xs text-gray-500 dark:text-dark-400">
@@ -353,18 +359,21 @@
     <template #footer>
       <p class="text-gray-500 dark:text-dark-400">
         {{ t('auth.alreadyHaveAccount') }}
-        <router-link
+        <HeroLink
           to="/login"
           class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
         >
           {{ t('auth.signIn') }}
-        </router-link>
+        </HeroLink>
       </p>
     </template>
   </AuthLayout>
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
+import HeroLink from '@/components/hero/HeroLink.vue'
 import { computed, ref, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -414,13 +423,14 @@ const appStore = useAppStore()
 
 const isLoading = ref<boolean>(false)
 const settingsLoaded = ref<boolean>(false)
+const settingsFailed = ref(false)
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
 const showConfirmPassword = ref<boolean>(false)
 const confirmPassword = ref('')
 
 // Public settings
-const registrationEnabled = ref<boolean>(true)
+const registrationEnabled = ref(appStore.cachedPublicSettings?.registration_enabled !== false)
 const emailVerifyEnabled = ref<boolean>(false)
 // Public settings are injected into the app store before Vue mounts. Use that
 // value for the first render so a disabled promo-code field never flashes
@@ -539,7 +549,7 @@ const agreementGateActive = computed(
 )
 
 const registrationActionDisabled = computed(
-  () => isLoading.value || !settingsLoaded.value || agreementGateActive.value
+  () => isLoading.value || !settingsLoaded.value || settingsFailed.value || !registrationEnabled.value || agreementGateActive.value
 )
 
 watch(validationToastMessage, (value, previousValue) => {
@@ -558,7 +568,9 @@ function syncAffiliateReferralCode(): string {
 
 // ==================== Lifecycle ====================
 
-onMounted(async () => {
+async function loadRegistrationSettings() {
+  settingsLoaded.value = false
+  settingsFailed.value = false
   syncAffiliateReferralCode()
 
   try {
@@ -602,12 +614,13 @@ onMounted(async () => {
     syncAffiliateReferralCode()
   } catch (error) {
     console.error('Failed to load public settings:', error)
-    loginAgreementEnabled.value = false
-    agreementAccepted.value = true
+    settingsFailed.value = true
   } finally {
     settingsLoaded.value = true
   }
-})
+}
+
+onMounted(loadRegistrationSettings)
 
 watch(
   () => [route.query.aff, route.query.aff_code],

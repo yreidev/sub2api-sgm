@@ -19,6 +19,7 @@ export interface PublicOrderVerifyResult {
   out_trade_no: string
   status: string
   paid: boolean
+  paid_at?: string
   created_at: string
   expires_at: string
 }

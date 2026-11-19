@@ -1,7 +1,10 @@
 import { defineConfig, loadEnv, Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import checker from 'vite-plugin-checker'
-import { resolve } from 'path'
+import { dirname, resolve } from 'path'
+import { readFile } from 'node:fs/promises'
+import { compile } from '@tailwindcss/node'
+import { parse } from 'postcss'
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({
@@ -77,6 +80,42 @@ function injectPublicSettings(backendUrl: string): Plugin {
   }
 }
 
+// Compile the shared HeroUI components with Tailwind v4. The Vue application
+// keeps its existing Tailwind v3 PostCSS pipeline and reset.
+function heroUIStyles(): Plugin {
+  const id = 'virtual:sgm-heroui.css'
+  const resolvedId = resolve(__dirname, 'src/styles/heroui.css')
+  return {
+    name: 'sgm-heroui-styles',
+    enforce: 'pre',
+    resolveId(source) {
+      if (source === id) return resolvedId
+    },
+    async load(source) {
+      if (source !== resolvedId) return
+      const css = await readFile(resolvedId, 'utf8')
+      const compiled = await compile(css, {
+        base: dirname(resolvedId),
+        from: resolvedId,
+        onDependency: dependency => this.addWatchFile(dependency),
+      })
+      const output = parse(compiled.build([]))
+      output.walkAtRules('layer', layer => {
+        if (layer.params === 'components' && layer.nodes) {
+          // Component rules must outrank the unlayered Tailwind v3 reset.
+          layer.walkRules(rule => {
+            rule.selector = rule.selector.replace(/\.(card|input)(?![\w-])/g, '.$1[data-slot="$1"]')
+          })
+          layer.replaceWith(...layer.nodes)
+          return
+        }
+        layer.params = layer.params.split(',').map(name => 'heroui-' + name.trim()).join(', ')
+      })
+      return output.toString()
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
@@ -86,6 +125,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       vue(),
+      heroUIStyles(),
       checker({
         vueTsc: true
       }),
@@ -109,6 +149,8 @@ export default defineConfig(({ mode }) => {
          * 分离第三方库并按功能合并应用代码，避免循环依赖
          */
         manualChunks(id: string) {
+          // 首屏和简洁页共用 CommonJS 互操作代码，将它放进独立的小包。
+          if (id === '\0commonjsHelpers.js') return 'vendor-commonjs'
           if (id.includes('node_modules')) {
             // Vue 核心库
             if (
@@ -140,8 +182,11 @@ export default defineConfig(({ mode }) => {
               return 'vendor-stripe'
             }
 
-            // 其他小型第三方库合并
-            return 'vendor-misc'
+            // 用户端页面共用 HeroUI。管理后台和支付 SDK 沿各自路由加载。
+            if (id.includes('/@heroui/react/') || id.includes('/react-aria-components/') ||
+              id.includes('/react-dom/') || id.includes('/react/')) {
+              return 'vendor-heroui'
+            }
           }
 
           // 应用代码：按入口点自动分包，不手动干预
@@ -162,7 +207,7 @@ export default defineConfig(({ mode }) => {
           target: backendUrl,
           changeOrigin: true
         },
-        '/setup': {
+        '/setup/': {
           target: backendUrl,
           changeOrigin: true
         }

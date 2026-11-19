@@ -630,6 +630,25 @@ describe('PlazaModelPricingTable 长上下文阶梯', () => {
     expect(cells[2].findAll('.leading-5')).toHaveLength(2)
   })
 
+  it('每个上下文档的 1h 和 12h 缓存写入价单独成行，与该档的输入、输出价对应', () => {
+    const model = ladderModel({ name: 'gpt-6.2-astra' })
+    const intervals = ladderIntervals().map(tier => ({
+      ...tier,
+      cache_write_1h_price: tier.cache_write_price,
+      cache_write_12h_price: tier.cache_write_price * 2
+    }))
+    model.pricing!.intervals = intervals
+    model.official_pricing!.intervals = intervals
+    const cells = mountTable([model], 0.8).findAll('tbody td')
+    for (const cell of cells.slice(1, 7)) {
+      expect(cell.findAll('.price-tier')).toHaveLength(2)
+    }
+    const windows = (cell: typeof cells[number]) => cell.findAll('.price-tier > .cache-windows')
+      .map(line => line.findAll('span').slice(1).map(price => price.text()))
+    expect(windows(cells[3])).toEqual([['(1h $5.00)', '(12h $10.00)'], ['(1h $10.00)', '(12h $20.00)']])
+    expect(windows(cells[6])).toEqual([['(1h $6.25)', '(12h $12.50)'], ['(1h $12.50)', '(12h $25.00)']])
+  })
+
   it('官方三列按 official_pricing.intervals 分档且不乘倍率,不内联 1h', () => {
     const wrapper = mountTable([ladderModel()], 0.5)
     const cells = wrapper.findAll('tbody td')

@@ -35,6 +35,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Home',
     component: () => import('@/views/HomeView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'Home'
     }
@@ -44,6 +45,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Login',
     component: () => import('@/views/auth/LoginView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'Login',
       titleKey: 'home.login'
@@ -54,6 +56,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Register',
     component: () => import('@/views/auth/RegisterView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'Register',
       titleKey: 'auth.createAccount'
@@ -64,6 +67,7 @@ const routes: RouteRecordRaw[] = [
     name: 'EmailVerify',
     component: () => import('@/views/auth/EmailVerifyView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'Verify Email'
     }
@@ -74,6 +78,7 @@ const routes: RouteRecordRaw[] = [
     alias: '/auth/oauth/callback',
     component: () => import('@/views/auth/OAuthCallbackView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'OAuth Callback',
       titleKey: 'auth.oauthCallbackPageTitle'
@@ -84,6 +89,7 @@ const routes: RouteRecordRaw[] = [
     name: 'LinuxDoOAuthCallback',
     component: () => import('@/views/auth/LinuxDoCallbackView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'LinuxDo OAuth Callback',
       titleKey: 'auth.linuxdoCallbackPageTitle'
@@ -94,6 +100,7 @@ const routes: RouteRecordRaw[] = [
     name: 'WeChatOAuthCallback',
     component: () => import('@/views/auth/WechatCallbackView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'WeChat OAuth Callback',
       titleKey: 'auth.wechatCallbackPageTitle'
@@ -104,6 +111,7 @@ const routes: RouteRecordRaw[] = [
     name: 'WeChatPaymentOAuthCallback',
     component: () => import('@/views/auth/WechatPaymentCallbackView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'WeChat Payment Callback',
       titleKey: 'auth.wechatPaymentCallbackPageTitle'
@@ -114,6 +122,7 @@ const routes: RouteRecordRaw[] = [
     name: 'DingTalkOAuthCallback',
     component: () => import('@/views/auth/DingTalkCallbackView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'DingTalk OAuth Callback',
       titleKey: 'auth.dingtalkCallbackPageTitle'
@@ -124,6 +133,7 @@ const routes: RouteRecordRaw[] = [
     name: 'dingtalk-email-completion',
     component: () => import('@/views/auth/DingTalkEmailCompletionView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'DingTalk Email Completion'
     }
@@ -133,6 +143,7 @@ const routes: RouteRecordRaw[] = [
     name: 'OIDCOAuthCallback',
     component: () => import('@/views/auth/OidcCallbackView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'OIDC OAuth Callback',
       titleKey: 'auth.oidcCallbackPageTitle'
@@ -143,6 +154,7 @@ const routes: RouteRecordRaw[] = [
     name: 'ForgotPassword',
     component: () => import('@/views/auth/ForgotPasswordView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'Forgot Password',
       titleKey: 'auth.forgotPasswordTitle'
@@ -153,6 +165,7 @@ const routes: RouteRecordRaw[] = [
     name: 'ResetPassword',
     component: () => import('@/views/auth/ResetPasswordView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'Reset Password'
     }
@@ -180,6 +193,7 @@ const routes: RouteRecordRaw[] = [
     name: 'ModelPlaza',
     component: () => import('@/views/ModelPlazaView.vue'),
     meta: {
+      heroUI: true,
       requiresAuth: false,
       title: 'Model Plaza',
       titleKey: 'modelPlaza.title'
@@ -194,14 +208,26 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: () => import('@/views/user/DashboardView.vue'),
+    component: () => import('@/views/user/AssistantHomeView.vue'),
+    beforeEnter: (to) => {
+      const auth = useAuthStore()
+      if (to.query.view === 'simple' || to.query.recharge === '1') return
+      if (auth.isAdmin) return '/admin/dashboard'
+    },
     meta: {
+      heroUI: true,
       requiresAuth: true,
       requiresAdmin: false,
       title: 'Dashboard',
       titleKey: 'dashboard.title',
       descriptionKey: 'dashboard.welcomeMessage'
     }
+  },
+  {
+    path: '/dashboard/standard',
+    name: 'StandardDashboard',
+    component: () => import('@/views/user/DashboardView.vue'),
+    meta: { requiresAuth: true, titleKey: 'dashboard.title' }
   },
   {
     path: '/keys',
@@ -768,7 +794,7 @@ const router = createRouter({
 /**
  * Navigation guard: Authentication check
  */
-let authInitialized = false
+let authInitialization: Promise<void> | undefined
 
 // 初始化导航加载状态和预加载
 const navigationLoading = useNavigationLoadingState()
@@ -809,10 +835,8 @@ router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
 
   // Restore auth state from localStorage on first navigation (page refresh)
-  if (!authInitialized) {
-    authStore.checkAuth()
-    authInitialized = true
-  }
+  authInitialization ??= authStore.checkAuth()
+  await authInitialization
 
   // Set page title
   const appStore = useAppStore()
@@ -826,6 +850,20 @@ router.beforeEach(async (to, _from, next) => {
   // Check if route requires authentication
   const requiresAuth = to.meta.requiresAuth !== false // Default to true
   const requiresAdmin = to.meta.requiresAdmin === true
+
+  // OAuth consent and payment callbacks are transaction flows outside the console.
+  if (authStore.isAuthenticated && !authStore.isAdmin) {
+    const otherConsole = requiresAuth && to.name !== 'Dashboard' && to.name !== 'MCPOAuthAuthorize'
+    if (otherConsole || ['Home', 'Setup', 'KeyUsage', 'ModelPlaza'].includes(String(to.name))) {
+      if (!appStore.backendModeEnabled && to.name === 'PurchaseSubscription') {
+        const resume = to.query.wechat_resume === '1' ? to.query : {}
+        next({ path: '/dashboard', query: { ...resume, recharge: '1' }, replace: true })
+        return
+      }
+      next(appStore.backendModeEnabled ? '/login' : '/dashboard')
+      return
+    }
+  }
 
   if (to.path === '/setup') {
     try {
@@ -903,13 +941,6 @@ router.beforeEach(async (to, _from, next) => {
       path: '/login',
       query: { redirect: to.fullPath } // Save intended destination
     })
-    return
-  }
-
-  // Check admin requirement
-  if (requiresAdmin && !authStore.isAdmin) {
-    // User is authenticated but not admin, redirect to user dashboard
-    next('/dashboard')
     return
   }
 

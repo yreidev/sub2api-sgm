@@ -1,10 +1,10 @@
 <template>
-  <div class="space-y-4">
+  <div class="min-w-0 space-y-4 [&_button]:min-h-11">
     <!-- ═══ Terminal States: show result, user clicks to return ═══ -->
 
     <!-- Success -->
     <template v-if="outcome === 'success'">
-      <div class="card p-6">
+      <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-6'">
         <div class="flex flex-col items-center space-y-4 py-4">
           <div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
             <Icon name="check" size="lg" class="text-green-500" />
@@ -18,7 +18,7 @@
               </div>
               <div v-if="paidOrder.out_trade_no" class="flex justify-between">
                 <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderNo') }}</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ paidOrder.out_trade_no }}</span>
+                <span class="min-w-0 break-all text-right font-medium text-gray-900 dark:text-white">{{ paidOrder.out_trade_no }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.amount') }}</span>
@@ -35,14 +35,15 @@
               </div>
             </div>
           </div>
-          <button class="btn btn-primary" @click="handleDone">{{ t('common.confirm') }}</button>
+          <HeroPaymentControl v-if="hero" :label="t('common.confirm')" @press="handleDone" />
+          <button v-else class="btn btn-primary" @click="handleDone">{{ t('common.confirm') }}</button>
         </div>
-      </div>
+      </component>
     </template>
 
     <!-- Cancelled -->
     <template v-else-if="outcome === 'cancelled'">
-      <div class="card p-6">
+      <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-6'">
         <div class="flex flex-col items-center space-y-4 py-4">
           <div class="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-dark-700">
             <svg class="h-8 w-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -51,36 +52,61 @@
           </div>
           <p class="text-lg font-bold text-gray-900 dark:text-white">{{ t('payment.qr.cancelled') }}</p>
           <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.cancelledDesc') }}</p>
-          <button class="btn btn-primary" @click="handleDone">{{ t('common.confirm') }}</button>
+          <HeroPaymentControl v-if="hero" :label="t('common.confirm')" @press="handleDone" />
+          <button v-else class="btn btn-primary" @click="handleDone">{{ t('common.confirm') }}</button>
         </div>
-      </div>
+      </component>
     </template>
 
+    <component :is="hero ? HeroPaymentPanel : 'div'" v-else-if="outcome === 'refunded'" :class="hero ? undefined : 'card p-6'">
+      <div class="space-y-4 text-center">
+        <p role="status" class="text-lg font-bold">{{ t('payment.status.refunded') }}</p>
+        <p>{{ t('payment.orders.orderNo') }} <span class="break-all font-mono">{{ displayOrderNumber }}</span></p>
+        <HeroPaymentControl v-if="hero" :label="t('payment.result.chooseAmountAgain')" @press="handleDone" />
+        <button v-else type="button" class="btn btn-primary" @click="handleDone">{{ t('payment.result.backToRecharge') }}</button>
+      </div>
+    </component>
+
     <!-- Expired / Failed -->
-    <template v-else-if="outcome === 'expired'">
-      <div class="card p-6">
+    <template v-else-if="outcome === 'expired' || outcome === 'failed'">
+      <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-6'">
         <div class="flex flex-col items-center space-y-4 py-4">
           <div class="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30">
             <svg class="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p class="text-lg font-bold text-gray-900 dark:text-white">{{ t('payment.qr.expired') }}</p>
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.expiredDesc') }}</p>
-          <button class="btn btn-primary" @click="handleDone">{{ t('common.confirm') }}</button>
+          <p class="text-lg font-bold text-gray-900 dark:text-white">{{ t(outcome === 'failed' ? 'payment.result.failed' : 'payment.qr.expired') }}</p>
+          <p v-if="outcome === 'expired'" class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.expiredDesc') }}</p>
+          <HeroPaymentControl v-if="hero" :label="t('common.confirm')" @press="handleDone" />
+          <button v-else class="btn btn-primary" @click="handleDone">{{ t('common.confirm') }}</button>
         </div>
-      </div>
+      </component>
     </template>
+
+    <component :is="hero ? HeroPaymentPanel : 'div'" v-else-if="settlement || awaitingExpiryCheck" :class="hero ? undefined : 'card p-4'">
+      <div class="space-y-3 text-center" role="status">
+        <template v-if="settlement === 'credit_failed'">
+          <p class="font-semibold">{{ t('payment.result.creditFailed') }}</p>
+          <p>{{ t('payment.result.creditFailedHint') }}</p>
+          <p>{{ t('payment.orders.orderNo') }} <span class="break-all font-mono">{{ displayOrderNumber }}</span></p>
+        </template>
+        <p v-else class="font-semibold">{{ t(settlement ? 'dashboard.assistantSetup.settling' : 'payment.qr.waitingPayment') }}</p>
+        <HeroPaymentControl v-if="hero" :label="t('dashboard.assistantSetup.checkOrder')" @press="pollStatus" />
+        <button v-else type="button" class="btn btn-secondary" @click="pollStatus">{{ t('dashboard.assistantSetup.checkOrder') }}</button>
+      </div>
+    </component>
 
     <!-- ═══ Active States: QR or Popup waiting ═══ -->
 
     <!-- Mobile Alipay app handoff. The QR fallback stays hidden until launch timeout. -->
     <template v-else-if="isMobileAlipayDeepLink">
       <template v-if="!deepLinkFallbackVisible">
-        <div class="card p-6">
+        <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-6'">
           <div class="flex flex-col items-center space-y-4 py-4 text-center">
+            <HeroPaymentMessage v-if="hero && deepLinkState === 'launching'" loading :text="t('payment.qr.alipayOpening')" />
             <div
-              v-if="deepLinkState === 'launching'"
+              v-else-if="deepLinkState === 'launching'"
               class="h-10 w-10 animate-spin rounded-full border-4 border-[#00AEEF] border-t-transparent"
             ></div>
             <div
@@ -93,25 +119,29 @@
               {{ deepLinkState === 'backgrounded' ? t('payment.qr.alipayContinueInApp') : t('payment.qr.alipayOpening') }}
             </p>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.alipayWaitingHint') }}</p>
-            <button
-              v-if="deepLinkState === 'backgrounded'"
-              data-test="reopen-alipay"
-              class="btn btn-alipay inline-flex items-center gap-2 text-sm"
-              @click="reopenAlipay"
-            >
-              <Icon name="externalLink" size="sm" />
-              {{ t('payment.qr.reopenAlipay') }}
-            </button>
+            <template v-if="deepLinkState === 'backgrounded'">
+              <HeroPaymentControl v-if="hero" :label="t('payment.qr.reopenAlipay')" data-test="reopen-alipay" @press="reopenAlipay" />
+              <button v-else
+                data-test="reopen-alipay"
+                class="btn btn-alipay inline-flex items-center gap-2 text-sm"
+                @click="reopenAlipay"
+              >
+                <Icon name="externalLink" size="sm" />
+                {{ t('payment.qr.reopenAlipay') }}
+              </button>
+            </template>
           </div>
-        </div>
-        <div class="card p-4 text-center">
-          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.expiresIn') }}</p>
-          <p class="mt-1 text-2xl font-bold tabular-nums text-gray-900 dark:text-white">{{ countdownDisplay }}</p>
-          <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ t('payment.qr.waitingPayment') }}</p>
-        </div>
+        </component>
+        <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-4 text-center'">
+          <div class="text-center">
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.expiresIn') }}</p>
+            <p class="mt-1 text-2xl font-bold tabular-nums text-gray-900 dark:text-white">{{ countdownDisplay }}</p>
+            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ t('payment.qr.waitingPayment') }}</p>
+          </div>
+        </component>
       </template>
       <template v-else>
-        <div data-test="alipay-qr-fallback" class="card p-6">
+        <component :is="hero ? HeroPaymentPanel : 'div'" data-test="alipay-qr-fallback" :class="hero ? undefined : 'card p-6'">
           <div class="flex flex-col items-center space-y-4">
             <div class="text-center">
               <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('payment.qr.alipayFallbackTitle') }}</p>
@@ -133,8 +163,8 @@
                 <span class="font-semibold tabular-nums text-gray-900 dark:text-white">{{ countdownDisplay }}</span>
               </div>
             </div>
-            <div :class="['relative rounded-lg border-2 p-4', qrBorderClass]">
-              <canvas ref="qrCanvas" class="mx-auto"></canvas>
+            <div :class="['relative max-w-full rounded-lg border-2 p-2 sm:p-4', qrBorderClass]">
+              <canvas ref="qrCanvas" class="mx-auto !h-auto max-w-full"></canvas>
               <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <span :class="['rounded-full p-2 shadow ring-2 ring-white', qrLogoBgClass]">
                   <img :src="qrLogoIcon" alt="" class="h-5 w-5 brightness-0 invert" />
@@ -145,7 +175,8 @@
               {{ t('payment.qr.alipaySaveAndScanHint') }}
             </p>
             <div class="grid w-full gap-2 sm:grid-cols-2">
-              <button
+              <HeroPaymentControl v-if="hero" :label="t('payment.qr.reopenAlipay')" data-test="reopen-alipay" @press="reopenAlipay" />
+              <button v-else
                 data-test="reopen-alipay"
                 class="btn btn-alipay inline-flex items-center justify-center gap-2"
                 @click="reopenAlipay"
@@ -153,7 +184,8 @@
                 <Icon name="externalLink" size="sm" />
                 {{ t('payment.qr.reopenAlipay') }}
               </button>
-              <button
+              <HeroPaymentControl v-if="hero" :label="t('payment.qr.saveQRCode')" data-test="save-alipay-qr" @press="saveQRCode" />
+              <button v-else
                 data-test="save-alipay-qr"
                 class="btn btn-secondary inline-flex items-center justify-center gap-2"
                 @click="saveQRCode"
@@ -162,21 +194,22 @@
                 {{ t('payment.qr.saveQRCode') }}
               </button>
             </div>
-            <button class="btn btn-secondary w-full" @click="handleDone">
-              {{ t('payment.result.backToRecharge') }}
+            <HeroPaymentControl v-if="hero" :label="t(props.waitForCredit ? 'payment.qr.cancelOrder' : 'payment.result.backToRecharge')" :disabled="cancelling" @press="props.waitForCredit ? handleCancel() : handleDone()" />
+            <button v-else class="btn btn-secondary w-full" :disabled="cancelling" @click="props.waitForCredit ? handleCancel() : handleDone()">
+              {{ t(props.waitForCredit ? 'payment.qr.cancelOrder' : 'payment.result.backToRecharge') }}
             </button>
           </div>
-        </div>
+        </component>
       </template>
     </template>
 
     <!-- QR Code Mode -->
     <template v-else-if="showQRCode">
-      <div class="card p-6">
+      <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-6'">
         <div class="flex flex-col items-center space-y-4">
           <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ scanTitle }}</p>
-          <div :class="['relative rounded-lg border-2 p-4', qrBorderClass]">
-            <canvas ref="qrCanvas" class="mx-auto"></canvas>
+          <div :class="['relative max-w-full rounded-lg border-2 p-2 sm:p-4', qrBorderClass]">
+            <canvas ref="qrCanvas" class="mx-auto !h-auto max-w-full"></canvas>
             <!-- Brand logo overlay -->
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
               <span :class="['rounded-full p-2 shadow ring-2 ring-white', qrLogoBgClass]">
@@ -185,37 +218,50 @@
             </div>
           </div>
           <p v-if="scanHint" class="text-center text-sm text-gray-500 dark:text-gray-400">{{ scanHint }}</p>
-          <button v-if="payUrl" class="btn btn-secondary text-sm" @click="reopenPopup">
-            {{ t('payment.qr.openPayWindow') }}
-          </button>
+          <template v-if="payUrl">
+            <HeroPaymentControl v-if="hero" :label="t('payment.qr.openPayWindow')" @press="reopenPopup" />
+            <button v-else class="btn btn-secondary text-sm" @click="reopenPopup">
+              {{ t('payment.qr.openPayWindow') }}
+            </button>
+          </template>
         </div>
-      </div>
-      <div class="card p-4 text-center">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.expiresIn') }}</p>
-        <p class="mt-1 text-2xl font-bold tabular-nums text-gray-900 dark:text-white">{{ countdownDisplay }}</p>
-        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ t('payment.qr.waitingPayment') }}</p>
-      </div>
-      <button class="btn btn-secondary w-full" :disabled="cancelling" @click="handleCancel">
+      </component>
+      <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-4 text-center'">
+        <div class="text-center">
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.expiresIn') }}</p>
+          <p class="mt-1 text-2xl font-bold tabular-nums text-gray-900 dark:text-white">{{ countdownDisplay }}</p>
+          <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ t('payment.qr.waitingPayment') }}</p>
+        </div>
+      </component>
+      <HeroPaymentControl v-if="hero" :label="cancelling ? t('common.processing') : t('payment.qr.cancelOrder')" :disabled="cancelling" @press="handleCancel" />
+      <button v-else class="btn btn-secondary w-full" :disabled="cancelling" @click="handleCancel">
         {{ cancelling ? t('common.processing') : t('payment.qr.cancelOrder') }}
       </button>
     </template>
 
     <!-- Waiting for Popup/Redirect Mode -->
     <template v-else>
-      <div class="card p-6">
+      <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-6'">
         <div class="flex flex-col items-center space-y-4 py-4">
-          <div class="h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
+          <HeroPaymentMessage v-if="hero" loading :text="t('payment.qr.waitingPayment')" />
+          <div v-else class="h-10 w-10 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"></div>
           <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('payment.qr.payInNewWindowHint') }}</p>
-          <button v-if="payUrl" class="btn btn-secondary text-sm" @click="reopenPopup">
-            {{ t('payment.qr.openPayWindow') }}
-          </button>
+          <template v-if="payUrl">
+            <HeroPaymentControl v-if="hero" :label="t('payment.qr.openPayWindow')" @press="reopenPopup" />
+            <button v-else class="btn btn-secondary text-sm" @click="reopenPopup">
+              {{ t('payment.qr.openPayWindow') }}
+            </button>
+          </template>
         </div>
-      </div>
-      <div class="card p-4 text-center">
-        <p class="mt-1 text-2xl font-bold tabular-nums text-gray-900 dark:text-white">{{ countdownDisplay }}</p>
-        <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ t('payment.qr.waitingPayment') }}</p>
-      </div>
-      <button class="btn btn-secondary w-full" :disabled="cancelling" @click="handleCancel">
+      </component>
+      <component :is="hero ? HeroPaymentPanel : 'div'" :class="hero ? undefined : 'card p-4 text-center'">
+        <div class="text-center">
+          <p class="mt-1 text-2xl font-bold tabular-nums text-gray-900 dark:text-white">{{ countdownDisplay }}</p>
+          <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">{{ t('payment.qr.waitingPayment') }}</p>
+        </div>
+      </component>
+      <HeroPaymentControl v-if="hero" :label="cancelling ? t('common.processing') : t('payment.qr.cancelOrder')" :disabled="cancelling" @press="handleCancel" />
+      <button v-else class="btn btn-secondary w-full" :disabled="cancelling" @click="handleCancel">
         {{ cancelling ? t('common.processing') : t('payment.qr.cancelOrder') }}
       </button>
     </template>
@@ -223,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { defineAsyncComponent, ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePaymentStore } from '@/stores/payment'
 import { useAppStore } from '@/stores'
@@ -231,6 +277,7 @@ import { paymentAPI } from '@/api/payment'
 import { extractI18nErrorMessage } from '@/utils/apiError'
 import { getPaymentPopupFeatures, isBuiltInAlipayMethod, isBuiltInWxpayMethod } from '@/components/payment/providerConfig'
 import { currencySymbol, formatPaymentAmount, normalizePaymentCurrency } from '@/components/payment/currency'
+import { paymentSettlementState, type SettlementState } from './paymentFlow'
 import type { PaymentOrder } from '@/types/payment'
 import Icon from '@/components/icons/Icon.vue'
 import QRCode from 'qrcode'
@@ -243,6 +290,9 @@ import {
   type AlipayDeepLinkState,
 } from './alipayDeepLink'
 
+const HeroPaymentMessage = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentMessage.vue'))
+const HeroPaymentPanel = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentPanel.vue'))
+const HeroPaymentControl = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentControl.vue'))
 const props = defineProps<{
   orderId: number
   amount?: number
@@ -255,9 +305,13 @@ const props = defineProps<{
   currency?: string
   outTradeNo?: string
   mobileAlipayDeepLink?: boolean
+  waitForCredit?: boolean
+  hero?: boolean
+  initialSettlement?: SettlementState
+  initiallyRefunded?: boolean
 }>()
 
-type PaymentOutcome = 'success' | 'cancelled' | 'expired'
+type PaymentOutcome = 'success' | 'cancelled' | 'expired' | 'failed' | 'refunded'
 
 const emit = defineEmits<{ done: []; success: []; settled: [outcome: PaymentOutcome] }>()
 
@@ -271,6 +325,8 @@ const qrUrl = ref('')
 const remainingSeconds = ref(0)
 const cancelling = ref(false)
 const paidOrder = ref<PaymentOrder | null>(null)
+const settlement = ref<SettlementState>(props.initialSettlement ?? null)
+const awaitingExpiryCheck = ref(false)
 const deepLinkState = ref<AlipayDeepLinkState>('idle')
 const deepLinkFallbackVisible = ref(false)
 const paymentCurrency = computed(() => normalizePaymentCurrency(props.currency))
@@ -284,8 +340,8 @@ const localeCode = computed(() => {
   return undefined
 })
 
-// Terminal outcome: null = still active, 'success' | 'cancelled' | 'expired'
-const outcome = ref<PaymentOutcome | null>(null)
+// A null outcome means the order is still active.
+const outcome = ref<PaymentOutcome | null>(props.initiallyRefunded ? 'refunded' : null)
 
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
@@ -341,7 +397,7 @@ const displayPaymentAmount = computed(() => formatGatewayAmount(props.payAmount 
 const displayOrderNumber = computed(() => props.outTradeNo || `#${props.orderId}`)
 
 function formatGatewayAmount(value: number, currency?: string | null): string {
-  return formatPaymentAmount(value, currency || paymentCurrency.value, localeCode.value)
+  return formatPaymentAmount(value, currency || paymentCurrency.value, localeCode.value, props.hero ? 'code' : 'narrowSymbol')
 }
 
 function isSuccessStatus(status: string | null | undefined): boolean {
@@ -431,17 +487,28 @@ async function pollStatus() {
     if (outcome.value) return
     order = await tryRecoverPendingOrder(order)
     if (outcome.value) return
+    const nextSettlement = paymentSettlementState(order)
+    if (nextSettlement && (nextSettlement === 'credit_failed' || props.waitForCredit || settlement.value)) {
+      settlement.value = nextSettlement
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null }
+      alipayLauncher?.dispose()
+      alipayLauncher = null
+      return
+    }
     if (isSuccessStatus(order.status)) {
       cleanup()
       paidOrder.value = order
       setOutcome('success')
       emit('success')
+    } else if (order.status === 'REFUNDED') {
+      cleanup()
+      setOutcome('refunded')
     } else if (order.status === 'CANCELLED') {
       cleanup()
       setOutcome('cancelled')
     } else if (order.status === 'EXPIRED' || order.status === 'FAILED') {
       cleanup()
-      setOutcome('expired')
+      setOutcome(props.waitForCredit && order.status === 'FAILED' ? 'failed' : 'expired')
     }
   } finally {
     pollInFlight = false
@@ -451,11 +518,30 @@ async function pollStatus() {
 function startCountdown(seconds: number) {
   remainingSeconds.value = Math.max(0, seconds)
   const deadline = Date.now() + remainingSeconds.value * 1000
-  if (remainingSeconds.value <= 0) { setOutcome('expired'); return }
+  if (remainingSeconds.value <= 0) {
+    handleCountdownEnd()
+    return
+  }
   countdownTimer = setInterval(() => {
     remainingSeconds.value = Math.max(0, Math.floor((deadline - Date.now()) / 1000))
-    if (remainingSeconds.value <= 0) { setOutcome('expired'); cleanup() }
+    if (remainingSeconds.value <= 0) handleCountdownEnd()
   }, 1000)
+}
+
+function handleCountdownEnd() {
+  if (props.waitForCredit) {
+    awaitingExpiryCheck.value = true
+    if (countdownTimer) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+    }
+    alipayLauncher?.dispose()
+    alipayLauncher = null
+    void pollStatus()
+    return
+  }
+  setOutcome('expired')
+  cleanup()
 }
 
 async function handleCancel() {
@@ -463,6 +549,10 @@ async function handleCancel() {
   cancelling.value = true
   try {
     await paymentAPI.cancelOrder(props.orderId)
+    if (props.waitForCredit) {
+      await pollStatus()
+      return
+    }
     cleanup()
     setOutcome('cancelled')
   } catch (err: unknown) {
@@ -489,13 +579,13 @@ let seconds = 30 * 60
 if (props.expiresAt) {
   seconds = Math.floor((new Date(props.expiresAt).getTime() - Date.now()) / 1000)
 }
-startCountdown(seconds)
-pollTimer = setInterval(pollStatus, 3000)
-renderQR()
-
-watch([() => qrUrl.value, showQRCode], () => renderQR())
+if (!outcome.value) {
+  if (!settlement.value) startCountdown(seconds)
+  if (!outcome.value) pollTimer = setInterval(pollStatus, 3000)
+}
+watch([qrCanvas, qrUrl, showQRCode], () => renderQR(), { flush: 'post' })
 onMounted(() => {
-  if (!isMobileAlipayDeepLink.value) return
+  if (outcome.value || settlement.value || awaitingExpiryCheck.value || !isMobileAlipayDeepLink.value) return
   alipayLauncher = createAlipayDeepLinkLauncher({
     qrCode: qrUrl.value,
     document,

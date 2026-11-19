@@ -3,12 +3,16 @@ import { flushPromises, shallowMount } from '@vue/test-utils'
 import AirwallexPaymentView from '../AirwallexPaymentView.vue'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,
+  assistantPaymentStorageKey,
   type PaymentRecoverySnapshot,
 } from '@/components/payment/paymentFlow'
 
 const routeState = vi.hoisted(() => ({
   query: {} as Record<string, unknown>,
 }))
+const getOrder = vi.hoisted(() => vi.fn())
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 7 } }) }))
+vi.mock('@/api/payment', () => ({ paymentAPI: { getOrder } }))
 const routerPush = vi.hoisted(() => vi.fn())
 const airwallexInit = vi.hoisted(() => vi.fn())
 const redirectToCheckout = vi.hoisted(() => vi.fn())
@@ -18,7 +22,7 @@ vi.mock('vue-router', async () => {
   return {
     ...actual,
     useRoute: () => routeState,
-    useRouter: () => ({ push: routerPush }),
+    useRouter: () => ({ push: routerPush, replace: routerPush }),
   }
 })
 
@@ -75,6 +79,7 @@ describe('AirwallexPaymentView', () => {
   beforeEach(() => {
     routeState.query = {}
     routerPush.mockReset()
+    getOrder.mockReset().mockResolvedValue({ data: { status: 'PENDING' } })
     airwallexInit.mockReset().mockResolvedValue({
       payments: {
         redirectToCheckout,
@@ -116,6 +121,52 @@ describe('AirwallexPaymentView', () => {
     expect(successUrl.searchParams.get('order_id')).toBe('101')
     expect(successUrl.searchParams.get('out_trade_no')).toBe('sub2_awx_101')
     expect(successUrl.searchParams.get('resume_token')).toBe('resume-awx')
+  })
+
+  it('loads an assistant checkout only for the signed-in account and matching order', async () => {
+    const snapshot = airwallexSnapshot()
+    localStorage.setItem(assistantPaymentStorageKey(7), JSON.stringify(snapshot))
+    localStorage.setItem(PAYMENT_RECOVERY_STORAGE_KEY, JSON.stringify(airwallexSnapshot({ orderId: 102 })))
+    routeState.query = { order_id: '101', out_trade_no: snapshot.outTradeNo, resume_token: snapshot.resumeToken }
+    mountView()
+    await flushPromises()
+    expect(getOrder).toHaveBeenCalledWith(101)
+    expect(redirectToCheckout).toHaveBeenCalledWith(expect.objectContaining({
+      intent_id: snapshot.intentId, client_secret: snapshot.clientSecret,
+    }))
+  })
+
+  it.each([[9, '101', 'sub2_awx_101', 'resume-awx'], [7, '101', 'other', 'resume-awx'],
+    [7, '101', 'sub2_awx_101', 'other'], [7, '102', 'sub2_awx_101', 'resume-awx']])(
+    'rejects mismatched assistant account or order identity (%s, %s, %s, %s)', async (owner, id, trade, token) => {
+      localStorage.setItem(assistantPaymentStorageKey(Number(owner)), JSON.stringify(airwallexSnapshot()))
+      routeState.query = { order_id: id, out_trade_no: trade, resume_token: token }
+      const view = mountView()
+      await flushPromises()
+      expect(view.text()).toContain('payment.airwallexMissingParams')
+      expect(airwallexInit).not.toHaveBeenCalled()
+    })
+
+  it('denies a legacy shared snapshot when the backend rejects order ownership', async () => {
+    routeState.query = { order_id: '101' }
+    localStorage.setItem(PAYMENT_RECOVERY_STORAGE_KEY, JSON.stringify(airwallexSnapshot()))
+    getOrder.mockRejectedValue({ status: 403 })
+    const view = mountView()
+    await flushPromises()
+    expect(view.text()).toContain('payment.airwallexLoadFailed')
+    expect(airwallexInit).not.toHaveBeenCalled()
+  })
+
+  it('does not reopen checkout for an order the backend has already charged', async () => {
+    localStorage.setItem(assistantPaymentStorageKey(7), JSON.stringify(airwallexSnapshot()))
+    routeState.query = { order_id: '101' }
+    getOrder.mockResolvedValue({ data: { status: 'FAILED', paid_at: '2026-04-20T12:02:00Z' } })
+    mountView()
+    await flushPromises()
+    expect(routerPush).toHaveBeenCalledWith({ path: '/payment/result', query: {
+      order_id: '101', out_trade_no: 'sub2_awx_101', resume_token: 'resume-awx',
+    } })
+    expect(airwallexInit).not.toHaveBeenCalled()
   })
 
   it('拒绝只从 URL query 读取 Airwallex 支付密钥', async () => {

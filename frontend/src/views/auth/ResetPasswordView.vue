@@ -2,11 +2,11 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div>
+        <h1 class="auth-heading">
           {{ t('auth.resetPasswordTitle') }}
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        </h1>
+        <p class="auth-intro">
           {{ t('auth.resetPasswordHint') }}
         </p>
       </div>
@@ -30,12 +30,12 @@
         </div>
 
         <div class="text-center">
-          <router-link
+          <HeroLink
             to="/forgot-password"
             class="inline-flex items-center gap-2 font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
           >
             {{ t('auth.requestNewResetLink') }}
-          </router-link>
+          </HeroLink>
         </div>
       </div>
 
@@ -58,13 +58,13 @@
         </div>
 
         <div class="text-center">
-          <router-link
+          <HeroLink
             to="/login"
             class="btn btn-primary inline-flex items-center gap-2"
           >
             <Icon name="login" size="md" />
             {{ t('auth.signIn') }}
-          </router-link>
+          </HeroLink>
         </div>
       </div>
 
@@ -79,9 +79,9 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="email"
-              :value="email"
+              :model-value="email"
               type="email"
               readonly
               disabled
@@ -99,7 +99,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="password"
               v-model="formData.password"
               :type="showPassword ? 'text' : 'password'"
@@ -110,14 +110,15 @@
               :class="{ 'input-error': errors.password }"
               :placeholder="t('auth.newPasswordPlaceholder')"
             />
-            <button
+            <HeroButton icon-only
               type="button"
-              @click="showPassword = !showPassword"
+              :aria-label="t(showPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
+              @press="showPassword = !showPassword"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
-            </button>
+            </HeroButton>
           </div>
         </div>
 
@@ -130,7 +131,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="confirmPassword"
               v-model="formData.confirmPassword"
               :type="showConfirmPassword ? 'text' : 'password'"
@@ -141,22 +142,23 @@
               :class="{ 'input-error': errors.confirmPassword }"
               :placeholder="t('auth.confirmPasswordPlaceholder')"
             />
-            <button
+            <HeroButton icon-only
               type="button"
-              @click="showConfirmPassword = !showConfirmPassword"
+              :aria-label="t(showConfirmPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
+              @press="showConfirmPassword = !showConfirmPassword"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
               <Icon v-if="showConfirmPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
-            </button>
+            </HeroButton>
           </div>
         </div>
 
         <!-- Submit Button -->
-        <button
+        <HeroButton variant="primary"
           type="submit"
           :disabled="isLoading"
-          class="btn btn-primary w-full"
+          full-width class="btn btn-primary"
         >
           <svg
             v-if="isLoading"
@@ -180,7 +182,7 @@
           </svg>
           <Icon v-else name="checkCircle" size="md" class="mr-2" />
           {{ isLoading ? t('auth.resettingPassword') : t('auth.resetPassword') }}
-        </button>
+        </HeroButton>
       </form>
     </div>
 
@@ -188,18 +190,21 @@
     <template #footer>
       <p class="text-gray-500 dark:text-dark-400">
         {{ t('auth.rememberedPassword') }}
-        <router-link
+        <HeroLink
           to="/login"
           class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
         >
           {{ t('auth.signIn') }}
-        </router-link>
+        </HeroLink>
       </p>
     </template>
   </AuthLayout>
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
+import HeroLink from '@/components/hero/HeroLink.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'

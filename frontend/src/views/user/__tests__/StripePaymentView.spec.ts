@@ -34,7 +34,7 @@ vi.mock('vue-router', async () => {
   return {
     ...actual,
     useRoute: () => routeState,
-    useRouter: () => ({ push: routerPush }),
+    useRouter: () => ({ push: routerPush, replace: routerPush }),
   }
 })
 
@@ -48,6 +48,8 @@ vi.mock('vue-i18n', async () => {
     }),
   }
 })
+
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 7 } }) }))
 
 vi.mock('@/stores/payment', () => ({
   usePaymentStore: () => paymentStore,
@@ -67,6 +69,7 @@ import StripePaymentView from '../StripePaymentView.vue'
 import { formatPaymentAmount } from '@/components/payment/currency'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,
+  assistantPaymentStorageKey,
   type PaymentRecoverySnapshot,
 } from '@/components/payment/paymentFlow'
 import type { PaymentOrder } from '@/types/payment'
@@ -160,6 +163,34 @@ describe('StripePaymentView', () => {
 
     expect(getOrder).toHaveBeenCalledWith(42)
     expect(stripeInstance.confirmAlipayPayment).toHaveBeenCalledWith('pi_secret_42', expect.any(Object))
+  })
+
+  it('opens the signed-in account’s matching assistant order ahead of a stale standard order', async () => {
+    writeSnapshot({ orderId: 17, clientSecret: 'stale-secret' })
+    localStorage.setItem(assistantPaymentStorageKey(7), JSON.stringify(stripeSnapshot({ resumeToken: 'demo-token' })))
+    routeState.query = { order_id: '42', resume_token: 'demo-token', method: 'alipay' }
+    mountView()
+    await flushPromises()
+    expect(stripeInstance.confirmAlipayPayment).toHaveBeenCalledWith('pi_secret_42', expect.any(Object))
+  })
+
+  it.each([[9, 'demo-token', '42'], [7, 'wrong-token', '42'], [7, 'demo-token', '99']])(
+    'rejects mismatched assistant account, token or order (%s, %s, %s)', async (owner, token, id) => {
+      localStorage.clear()
+      localStorage.setItem(assistantPaymentStorageKey(Number(owner)), JSON.stringify(stripeSnapshot({ resumeToken: 'demo-token' })))
+      routeState.query = { order_id: id, resume_token: token }
+      const view = mountView()
+      await flushPromises()
+      expect(view.text()).toContain('payment.stripeMissingParams')
+      expect(loadStripe).not.toHaveBeenCalled()
+    })
+
+  it('opens the order result without starting another checkout for a charged order', async () => {
+    getOrder.mockResolvedValue({ data: orderFactory({ status: 'FAILED', paid_at: '2026-04-20T12:02:00Z' }) })
+    mountView()
+    await flushPromises()
+    expect(routerPush).toHaveBeenCalledWith({ path: '/payment/result', query: { order_id: '42', resume_token: undefined } })
+    expect(loadStripe).not.toHaveBeenCalled()
   })
 
   it('ignores a client secret supplied in the URL query', async () => {

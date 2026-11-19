@@ -10,10 +10,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { paymentSettlementState } from './paymentFlow'
 import type { OrderStatus } from '@/types/payment'
 
 const props = defineProps<{
   status: OrderStatus
+  paidAt?: string
 }>()
 
 const { t } = useI18n()
@@ -35,6 +37,7 @@ const statusMap: Record<OrderStatus, { key: string; class: string }> = {
 }
 
 const statusLabel = computed(() => {
+  if (paymentSettlementState({ status: props.status, paid_at: props.paidAt }) === 'credit_failed') return t('payment.result.creditFailed')
   const entry = statusMap[props.status]
   return entry ? t(entry.key) : props.status
 })

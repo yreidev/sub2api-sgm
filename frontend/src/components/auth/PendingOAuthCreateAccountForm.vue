@@ -1,6 +1,6 @@
 <template>
   <form class="space-y-3" @submit.prevent="handleSubmit">
-    <input
+    <HeroInput
       v-model="email"
       :data-testid="`${testIdPrefix}-create-account-email`"
       type="email"
@@ -8,7 +8,7 @@
       :placeholder="t('auth.emailPlaceholder')"
       :disabled="isSubmitting || isSendingCode"
     />
-    <input
+    <HeroInput
       v-model="password"
       :data-testid="`${testIdPrefix}-create-account-password`"
       type="password"
@@ -35,7 +35,7 @@
       />
     </div>
     <div v-if="emailVerifyEnabled" class="flex gap-3">
-      <input
+      <HeroInput
         v-model="verifyCode"
         :data-testid="`${testIdPrefix}-create-account-verify-code`"
         type="text"
@@ -45,12 +45,12 @@
         placeholder="123456"
         :disabled="isSubmitting"
       />
-      <button
+      <HeroButton variant="secondary"
         :data-testid="`${testIdPrefix}-create-account-send-code`"
         type="button"
         class="btn btn-secondary shrink-0"
         :disabled="isSubmitting || isSendingCode || countdown > 0 || !email.trim() || (turnstileEnabled && !turnstileToken)"
-        @click="handleSendCode"
+        @press="handleSendCode"
       >
         {{
           isSendingCode
@@ -59,7 +59,7 @@
               ? t('auth.resendCountdown', { countdown })
               : t('auth.sendCode')
         }}
-      </button>
+      </HeroButton>
     </div>
     <p v-if="emailVerifyEnabled && sendCodeSuccess" class="text-sm text-green-600 dark:text-green-400">
       {{ t('auth.codeSentSuccess') }}
@@ -67,7 +67,7 @@
     <p v-else-if="emailVerifyEnabled" class="text-xs text-gray-500 dark:text-dark-400">
       {{ t('auth.verificationCodeHint') }}
     </p>
-    <input
+    <HeroInput
       v-if="invitationCodeEnabled"
       v-model="invitationCode"
       :data-testid="`${testIdPrefix}-create-account-invitation-code`"
@@ -76,27 +76,29 @@
       :placeholder="t('auth.invitationCodePlaceholder')"
       :disabled="isSubmitting"
     />
-    <button
+    <HeroButton variant="primary"
       :data-testid="`${testIdPrefix}-create-account-submit`"
       type="button"
-      class="btn btn-primary w-full"
+      full-width class="btn btn-primary"
       :disabled="isSubmitting || !email.trim() || password.length < 6 || (invitationCodeEnabled && !invitationCode.trim()) || (turnstileEnabled && !turnstileToken)"
-      @click="handleSubmit"
+      @press="handleSubmit"
     >
       {{ isSubmitting ? t('common.processing') : t('auth.createAccount') }}
-    </button>
-    <button
+    </HeroButton>
+    <HeroButton variant="secondary"
       type="button"
-      class="btn btn-secondary w-full"
+      full-width class="btn btn-secondary"
       :disabled="isSubmitting"
-      @click="emitSwitchToBind"
+      @press="emitSwitchToBind"
     >
       {{ t('auth.alreadyHaveAccount') }}
-    </button>
+    </HeroButton>
   </form>
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'

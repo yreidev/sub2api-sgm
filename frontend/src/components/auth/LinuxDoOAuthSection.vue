@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-4">
-    <button type="button" :disabled="disabled" class="btn btn-secondary w-full" @click="startLogin">
+    <HeroButton variant="secondary" type="button" :disabled="disabled" full-width class="btn btn-secondary" @press="startLogin">
       <svg
         class="icon mr-2"
         viewBox="0 0 16 16"
@@ -27,7 +27,7 @@
         </g>
       </svg>
       {{ t('auth.linuxdo.signIn') }}
-    </button>
+    </HeroButton>
 
     <div v-if="showDivider" class="flex items-center gap-3">
       <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
@@ -40,6 +40,7 @@
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { OAuthLoginStart } from '@/api/auth'

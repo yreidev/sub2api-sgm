@@ -5,6 +5,15 @@ export default {
   },
   // Home Page
   home: {
+    backToSite: '返回网站首页',
+    connectAssistant: '接入你的 AI 助手',
+    assistantIntro: '在同一个账户里配置助手，查看余额与每次请求的消耗。',
+    connectTitle: '配置助手',
+    connectHint: '登录后选择可用模型，把 API 基础地址和密钥填入助手的 OpenAI 兼容设置。',
+    balanceTitle: '查看账户余额',
+    balanceHint: '在账户概览查看余额。站点开放自助充值时，也可以在这里充值。',
+    historyTitle: '查看使用明细',
+    historyHint: '查看今日消耗，展开每次请求的模型、Token 用量与费用。',
     viewOnGithub: '在 GitHub 上查看',
     viewDocs: '查看文档',
     docs: '文档',

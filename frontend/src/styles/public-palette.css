@@ -1,0 +1,46 @@
+.public-palette {
+  color-scheme: light;
+  --overlay: var(--panel);
+  --overlay-foreground: var(--ink);
+  --surface: var(--panel);
+  --surface-foreground: var(--ink);
+  --foreground: var(--ink);
+  --field-background: var(--field);
+  --field-border: var(--field-line);
+  --field-foreground: var(--ink);
+  --field-placeholder: var(--muted);
+  --accent-foreground: var(--on-accent);
+  --border: var(--line);
+  --page: #f6f8f8;
+  --panel: #fff;
+  --ink: #192e38;
+  --muted: #52676e;
+  --line: #d6e0e1;
+  --field: #f8fafa;
+  --field-line: #819496;
+  --accent: #195762;
+  --on-accent: #fff;
+  --tint: #edf6f5;
+  --focus: #126c7a;
+  --wave-opacity: .8;
+}
+
+.dark .public-palette {
+  color-scheme: dark;
+  --page: #102126;
+  --panel: #172d33;
+  --ink: #e1efef;
+  --muted: #afc2c6;
+  --line: #365058;
+  --field: #172a30;
+  --field-line: #718b92;
+  --accent: #a1d7d3;
+  --on-accent: #102c33;
+  --tint: #203b40;
+  --focus: #a1d7d3;
+  --wave-opacity: .16;
+}
+
+.public-menu { border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); color: var(--ink); }
+.public-menu [role=option], .public-menu [role=menuitem] { min-height: 44px; }
+.sgm-auth-modal { width: min(100%, 36rem); background: var(--panel); color: var(--ink); }

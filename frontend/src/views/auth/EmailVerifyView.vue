@@ -2,11 +2,11 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div>
+        <h1 class="auth-heading">
           {{ t('auth.verifyYourEmail') }}
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        </h1>
+        <p v-if="hasRegisterData" class="auth-intro">
           {{ t('auth.sendCodeDesc') }}
           <span class="font-medium text-gray-700 dark:text-gray-300">{{ email }}</span>
         </p>
@@ -35,7 +35,7 @@
           <label for="code" class="input-label text-center">
             {{ t('auth.verificationCode') }}
           </label>
-          <input
+          <HeroInput
             id="code"
             v-model="verifyCode"
             type="text"
@@ -106,10 +106,10 @@
         </div>
 
         <!-- Submit Button -->
-        <button
+        <HeroButton variant="primary"
           type="submit"
           :disabled="isLoading || !verifyCode || (pendingOAuthCreateTurnstileRequired && !createAccountTurnstileToken)"
-          class="btn btn-primary w-full"
+          full-width class="btn btn-primary"
         >
           <svg
             v-if="isLoading"
@@ -133,22 +133,22 @@
           </svg>
           <Icon v-else name="checkCircle" size="md" class="mr-2" />
           {{ isLoading ? t('auth.verifying') : t('auth.verifyAndCreate') }}
-        </button>
+        </HeroButton>
 
         <!-- Resend Code -->
         <div class="text-center">
-          <button
+          <HeroButton
             v-if="countdown > 0"
             type="button"
             disabled
             class="cursor-not-allowed text-sm text-gray-400 dark:text-dark-500"
           >
             {{ t('auth.resendCountdown', { countdown }) }}
-          </button>
-          <button
+          </HeroButton>
+          <HeroButton
             v-else
             type="button"
-            @click="handleResendCode"
+            @press="handleResendCode"
             :disabled="
               isSendingCode || (turnstileEnabled && showResendTurnstile && !resendTurnstileToken)
             "
@@ -159,25 +159,27 @@
               {{ t('auth.clickToResend') }}
             </span>
             <span v-else>{{ t('auth.resendCode') }}</span>
-          </button>
+          </HeroButton>
         </div>
       </form>
     </div>
 
     <!-- Footer -->
     <template #footer>
-      <button
-        @click="handleBack"
+      <HeroButton
+        @press="handleBack"
         class="flex items-center gap-2 text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-gray-300"
       >
         <Icon name="arrowLeft" size="sm" />
         {{ t('auth.backToRegistration') }}
-      </button>
+      </HeroButton>
     </template>
   </AuthLayout>
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'

@@ -4,6 +4,7 @@ import { normalizeVisibleMethod } from '@/components/payment/paymentFlow'
 
 export interface ParsedWechatResumeRoute {
   orderAmount: number
+  selectedAmount?: number
   orderType: 'balance' | 'subscription'
   paymentType: string
   planId?: number
@@ -45,7 +46,9 @@ export function parseWechatResumeRoute(
     : 'balance'
 
   if (wechatResumeToken) {
+    const selectedAmount = Number(readQueryString(query, 'amount'))
     return {
+      ...(orderType === 'balance' && Number.isFinite(selectedAmount) && selectedAmount > 0 ? { selectedAmount } : {}),
       wechatResumeToken,
       paymentType,
       orderType,

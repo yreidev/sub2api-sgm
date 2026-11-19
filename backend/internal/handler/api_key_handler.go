@@ -177,6 +177,49 @@ func (h *APIKeyHandler) GetByID(c *gin.Context) {
 	response.Success(c, dto.APIKeyFromService(key).Localized(c.GetHeader("Accept-Language")))
 }
 
+// GetAssistant returns the caller's existing fixed credential if it has been issued.
+func (h *APIKeyHandler) GetAssistant(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	key, err := h.apiKeyService.GetAssistantKey(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if key == nil {
+		response.Success(c, gin.H{"key": nil})
+		return
+	}
+	response.Success(c, gin.H{"key": key.Key})
+}
+
+// EnsureAssistant returns the current user's fixed assistant credential.
+func (h *APIKeyHandler) EnsureAssistant(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	var req struct {
+		ReplaceDeleted bool `json:"replace_deleted"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid assistant key request")
+		return
+	}
+	key, err := h.apiKeyService.EnsureAssistantKey(c.Request.Context(), subject.UserID, req.ReplaceDeleted)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, gin.H{"key": key.Key})
+}
+
 // Create handles creating a new API key
 // POST /api/v1/api-keys
 func (h *APIKeyHandler) Create(c *gin.Context) {

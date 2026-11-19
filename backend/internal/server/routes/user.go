@@ -24,6 +24,16 @@ func RegisterUserRoutes(
 	authenticated.Use(panelRateLimiter.Global())
 	// 用户管理面变更类操作入审计（含 TOTP 启用/禁用、step-up 验证、密码修改等安全事件）
 	authenticated.Use(gin.HandlerFunc(auditLog))
+	// Standard-console routes are available to admin sessions. Private MCP
+	// dispatch already checks the OAuth grant, operation and subject.
+	adminOnly := middleware.AdminOnly()
+	standard := authenticated.Group("", func(c *gin.Context) {
+		if c.GetString("auth_method") == service.AuditAuthMethodMCPOAuth {
+			c.Next()
+			return
+		}
+		adminOnly(c)
+	})
 	{
 		// 用户接口
 		user := authenticated.Group("/user")
@@ -37,18 +47,19 @@ func RegisterUserRoutes(
 				user.POST("/mcp/authorize", h.MCPOAuth.Decide)
 			}
 			user.PUT("/password", h.User.ChangePassword)
-			user.PUT("", h.User.UpdateProfile)
-			user.GET("/aff", h.User.GetAffiliate)
-			user.POST("/aff/transfer", h.User.TransferAffiliateQuota)
+			standardUser := standard.Group("/user")
+			standardUser.PUT("", h.User.UpdateProfile)
+			standardUser.GET("/aff", h.User.GetAffiliate)
+			standardUser.POST("/aff/transfer", h.User.TransferAffiliateQuota)
 			user.POST("/account-bindings/email/send-code", h.User.SendEmailBindingCode)
 			user.POST("/account-bindings/email", h.User.BindEmailIdentity)
 			user.DELETE("/account-bindings/:provider", h.User.UnbindIdentity)
 			user.POST("/auth-identities/bind/start", h.User.StartIdentityBinding)
-			user.GET("/api-keys/:id/usage/daily", panelRateLimiter.Heavy(), h.Usage.GetMyAPIKeyDailyUsage)
-			user.GET("/platform-quotas", h.User.GetMyPlatformQuotas)
+			standardUser.GET("/api-keys/:id/usage/daily", panelRateLimiter.Heavy(), h.Usage.GetMyAPIKeyDailyUsage)
+			standardUser.GET("/platform-quotas", h.User.GetMyPlatformQuotas)
 
 			// 通知邮箱管理
-			notifyEmail := user.Group("/notify-email")
+			notifyEmail := standardUser.Group("/notify-email")
 			{
 				notifyEmail.POST("/send-code", h.User.SendNotifyEmailCode)
 				notifyEmail.POST("/verify", h.User.VerifyNotifyEmail)
@@ -80,7 +91,10 @@ func RegisterUserRoutes(
 		}
 
 		// API Key管理
-		keys := authenticated.Group("/keys")
+		authenticated.GET("/keys/assistant", h.APIKey.GetAssistant)
+		authenticated.GET("/keys/assistant/models", h.Gateway.AssistantModels)
+		authenticated.PUT("/keys/assistant", h.APIKey.EnsureAssistant)
+		keys := standard.Group("/keys")
 		{
 			keys.GET("", h.APIKey.List)
 			keys.GET("/:id", h.APIKey.GetByID)
@@ -89,28 +103,27 @@ func RegisterUserRoutes(
 			keys.DELETE("/:id", h.APIKey.Delete)
 		}
 
-		// 用户可用分组（非管理员接口）
-		groups := authenticated.Group("/groups")
+		// 标准后台的用户可用分组
+		groups := standard.Group("/groups")
 		{
 			groups.GET("/available", h.APIKey.GetAvailableGroups)
 			groups.GET("/rates", h.APIKey.GetUserGroupRates)
 		}
 
-		// 用户可用渠道（非管理员接口）
-		channels := authenticated.Group("/channels")
+		// 标准后台的用户可用渠道
+		channels := standard.Group("/channels")
 		{
 			channels.GET("/available", h.AvailableChannel.List)
 		}
 
 		// 使用记录（聚合统计属重查询，叠加更严格的按用户限流）
-		usage := authenticated.Group("/usage")
-		usage.Use(panelRateLimiter.Heavy())
+		authenticated.GET("/usage", panelRateLimiter.Heavy(), h.Usage.List)
+		authenticated.GET("/usage/stats", panelRateLimiter.Heavy(), h.Usage.Stats)
+		usage := standard.Group("/usage", panelRateLimiter.Heavy())
 		{
-			usage.GET("", h.Usage.List)
 			usage.GET("/errors", h.Usage.ListErrors)
 			usage.GET("/errors/:id", h.Usage.GetErrorDetail)
 			usage.GET("/:id", h.Usage.GetByID)
-			usage.GET("/stats", h.Usage.Stats)
 			// User dashboard endpoints
 			usage.GET("/dashboard/stats", h.Usage.DashboardStats)
 			usage.GET("/dashboard/trend", h.Usage.DashboardTrend)
@@ -127,30 +140,30 @@ func RegisterUserRoutes(
 		}
 
 		// 卡密兑换
-		redeem := authenticated.Group("/redeem")
+		redeem := standard.Group("/redeem")
 		{
 			redeem.POST("", h.Redeem.Redeem)
 			redeem.GET("/history", h.Redeem.GetHistory)
 		}
 
 		// 用户订阅
-		subscriptions := authenticated.Group("/subscriptions")
+		authenticated.GET("/subscriptions/active", h.Subscription.GetActive)
+		subscriptions := standard.Group("/subscriptions")
 		{
 			subscriptions.GET("", h.Subscription.List)
-			subscriptions.GET("/active", h.Subscription.GetActive)
 			subscriptions.GET("/progress", h.Subscription.GetProgress)
 			subscriptions.GET("/summary", h.Subscription.GetSummary)
 		}
 
 		// 渠道监控（用户只读）
-		monitors := authenticated.Group("/channel-monitors")
+		monitors := standard.Group("/channel-monitors")
 		{
 			monitors.GET("", h.ChannelMonitor.List)
 			monitors.GET("/:id/status", h.ChannelMonitor.GetStatus)
 		}
 
 		// V2 passive views require feature on + mode=v2.
-		monitorV2 := authenticated.Group("/channel-monitor-v2")
+		monitorV2 := standard.Group("/channel-monitor-v2")
 		monitorV2.Use(panelRateLimiter.Heavy())
 		monitorV2.Use(channelMonitorModeV2Guard(settingService))
 		{

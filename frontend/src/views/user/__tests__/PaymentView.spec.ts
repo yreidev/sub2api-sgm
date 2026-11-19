@@ -1,13 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, shallowMount } from '@vue/test-utils'
 import PaymentView from '../PaymentView.vue'
-import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
+import * as paymentFlow from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
 import AmountInput from '@/components/payment/AmountInput.vue'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
 import en from '@/i18n/locales/en'
 import zh from '@/i18n/locales/zh'
 import type { CheckoutInfoResponse, MethodLimit, SubscriptionPlan } from '@/types/payment'
+
+const { assistantPaymentStorageKey, PAYMENT_RECOVERY_STORAGE_KEY } = paymentFlow
 
 const routeState = vi.hoisted(() => ({
   path: '/purchase',
@@ -18,12 +20,16 @@ const routerReplace = vi.hoisted(() => vi.fn())
 const routerPush = vi.hoisted(() => vi.fn())
 const routerResolve = vi.hoisted(() => vi.fn(() => ({ href: '/payment/stripe?mock=1' })))
 const createOrder = vi.hoisted(() => vi.fn())
+const pollOrderStatus = vi.hoisted(() => vi.fn())
 const refreshUser = vi.hoisted(() => vi.fn())
 const fetchActiveSubscriptions = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const showError = vi.hoisted(() => vi.fn())
+const showSuccess = vi.hoisted(() => vi.fn())
 const showInfo = vi.hoisted(() => vi.fn())
 const showWarning = vi.hoisted(() => vi.fn())
 const getCheckoutInfo = vi.hoisted(() => vi.fn())
+const getMyOrders = vi.hoisted(() => vi.fn())
+const getPaymentConfig = vi.hoisted(() => vi.fn())
 const bridgeInvoke = vi.hoisted(() => vi.fn())
 const translate = vi.hoisted(() => vi.fn((key: string) => key))
 // Public settings live in a reactive holder so tests can flip feature flags after mount
@@ -58,6 +64,7 @@ vi.mock('vue-i18n', async () => {
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
     user: {
+      id: 17,
       username: 'demo-user',
       balance: 0,
     },
@@ -68,6 +75,7 @@ vi.mock('@/stores/auth', () => ({
 vi.mock('@/stores/payment', () => ({
   usePaymentStore: () => ({
     createOrder,
+    pollOrderStatus,
   }),
 }))
 
@@ -87,6 +95,7 @@ vi.mock('@/stores', async () => {
   return {
     useAppStore: () => ({
       showError,
+      showSuccess,
       showInfo,
       showWarning,
       get cachedPublicSettings() {
@@ -98,6 +107,8 @@ vi.mock('@/stores', async () => {
 
 vi.mock('@/api/payment', () => ({
   paymentAPI: {
+    getConfig: getPaymentConfig,
+    getMyOrders,
     getCheckoutInfo,
   },
 }))
@@ -136,6 +147,233 @@ function checkoutInfoFixture(overrides: Partial<CheckoutInfoResponse> = {}) {
     data: { ...data, ...overrides },
   }
 }
+
+describe('PaymentView local recharge preview', () => {
+  it('allows selecting an amount with disabled providers while blocking order creation', async () => {
+    routeState.path = '/dashboard'
+    routeState.query = {}
+    createOrder.mockReset()
+    getPaymentConfig.mockResolvedValue({ data: { min_amount: 10, max_amount: 5000 } })
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture({
+      methods: {},
+      balance_disabled: true,
+      global_min: 10,
+      recharge_bonus_tiers: [{ min_amount: 50, bonus_percent: 6 }]
+    }))
+    const wrapper = shallowMount(PaymentView, {
+      props: { inlineRecharge: true, previewCheckout: true },
+      global: { renderStubDefaultSlot: true, stubs: { Teleport: true } }
+    })
+    await flushPromises()
+    expect(wrapper.find('[text="dashboard.assistantSetup.rechargePreview"]').exists()).toBe(true)
+    const amountInput = wrapper.getComponent(AmountInput)
+    expect(amountInput.props('amounts')).toEqual([10, 20, 50, 100, 200, 500, 1000, 2000, 5000])
+    amountInput.vm.$emit('update:modelValue', 50)
+    await flushPromises()
+    expect(wrapper.get('[data-testid=recharge-credited-row]').text()).toMatch(/USD\s*53[.]00/)
+    expect(wrapper.get('[data-testid=recharge-pay-row]').text()).toMatch(/CNY\s*50[.]00/)
+    const pay = wrapper.get('[data-testid=inline-recharge-submit]')
+    expect(pay.attributes('disabled')).toBeDefined()
+    expect(createOrder).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+})
+
+describe('assistant recharge order recovery', () => {
+  const key = assistantPaymentStorageKey(17)
+
+  beforeEach(() => {
+    routeState.path = '/dashboard'
+    routeState.query = {}
+    createOrder.mockClear()
+    refreshUser.mockReset().mockResolvedValue(undefined)
+    getCheckoutInfo.mockReset().mockResolvedValue(checkoutInfoFixture())
+    localStorage.setItem(key, JSON.stringify({
+      orderId: 42, amount: 53, requestedAmount: 50, qrCode: 'test-qr', paymentType: 'alipay',
+      payUrl: '', expiresAt: '2020-01-01T00:00:00Z', clientSecret: '', payAmount: 50,
+      currency: 'CNY', paymentMode: '', resumeToken: '', createdAt: 1,
+    }))
+  })
+
+  afterEach(() => localStorage.removeItem(key))
+
+  it('looks up an uncertain submission in the dialog before enabling another attempt', async () => {
+    localStorage.removeItem(key)
+    localStorage.setItem(key + '.uncertain', '1')
+    getMyOrders.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ data: { items: [{
+      id: 42, out_trade_no: 'sample-order', created_at: '2026-04-20T12:00:00Z',
+      status: 'FAILED', paid_at: '2026-04-20T12:01:00Z', pay_amount: 50, currency: 'CNY',
+    }], page: 1, pages: 2 } })
+    routerPush.mockClear()
+    const wrapper = shallowMount(PaymentView, {
+      props: { inlineRecharge: true }, global: { renderStubDefaultSlot: true, stubs: { Teleport: true } },
+    })
+    try {
+      await flushPromises()
+      const check = wrapper.getComponent('[label="dashboard.assistantSetup.checkOrder"]')
+      check.vm.$emit('press')
+      await flushPromises()
+      expect(wrapper.get('[role=alert]').text()).toContain('dashboard.assistantSetup.orderLookupFailed')
+      expect(wrapper.find('[label="dashboard.assistantSetup.checkedOrder"]').exists()).toBe(false)
+      check.vm.$emit('press')
+      await flushPromises()
+      expect(getMyOrders).toHaveBeenLastCalledWith({ page: 1, page_size: 5 })
+      expect(wrapper.text()).toContain('sample-order')
+      expect(wrapper.getComponent({ name: 'OrderStatusBadge' }).props('status')).toBe('FAILED')
+      expect(wrapper.text()).toContain('dashboard.assistantSetup.orderPaidAt')
+      expect(wrapper.find('[label="dashboard.assistantSetup.checkedOrder"]').exists()).toBe(true)
+      getMyOrders.mockResolvedValueOnce({ data: { items: [{
+        id: 37, out_trade_no: 'earlier-order', status: 'COMPLETED', currency: 'USD', pay_amount: 25,
+        created_at: '2026-04-18T12:00:00Z',
+      }], page: 2, pages: 2 } })
+      wrapper.getComponent('[label="pagination.next"]').vm.$emit('press')
+      await flushPromises()
+      expect(getMyOrders).toHaveBeenLastCalledWith({ page: 2, page_size: 5 })
+      expect(wrapper.text()).toContain('earlier-order')
+      expect(createOrder).not.toHaveBeenCalled()
+      expect(routerPush).not.toHaveBeenCalled()
+    } finally {
+      wrapper.unmount()
+      localStorage.removeItem(key + '.uncertain')
+    }
+  })
+
+  it('clears the recovered order once when the payment panel confirms credit', async () => {
+    pollOrderStatus.mockReset().mockResolvedValue({ status: 'RECHARGING' })
+    const wrapper = shallowMount(PaymentView, { props: { inlineRecharge: true } })
+    await flushPromises()
+    const panel = wrapper.getComponent({ name: 'PaymentStatusPanel' })
+    const clearSnapshot = vi.spyOn(paymentFlow, 'clearPaymentRecoverySnapshot')
+    try {
+      panel.vm.$emit('settled', 'success')
+      panel.vm.$emit('success')
+      await flushPromises()
+      expect(clearSnapshot).toHaveBeenCalledTimes(1)
+      expect(localStorage.getItem(key)).toBeNull()
+      expect(wrapper.emitted('credited')).toHaveLength(1)
+      expect(refreshUser).toHaveBeenCalledOnce()
+    } finally {
+      clearSnapshot.mockRestore()
+      wrapper.unmount()
+    }
+  })
+
+  it('ignores a replayed WeChat callback while an existing order awaits credit', async () => {
+    routeState.query = { recharge: '1', wechat_resume: '1', wechat_resume_token: 'old-demo-token' }
+    pollOrderStatus.mockResolvedValueOnce({ status: 'FAILED', paid_at: '2026-04-20T12:01:00Z' })
+    const view = shallowMount(PaymentView, { props: { inlineRecharge: true } })
+    await flushPromises()
+    expect(localStorage.getItem(key)).not.toBeNull()
+    expect(view.getComponent({ name: 'PaymentStatusPanel' }).props('initialSettlement')).toBe('credit_failed')
+    expect(createOrder).not.toHaveBeenCalled()
+    expect(routerReplace).toHaveBeenCalledWith({ path: '/dashboard', query: { recharge: '1' } })
+    view.unmount()
+  })
+
+  it('confirms credit while the balance request is pending and keeps that confirmation on error', async () => {
+    let failRefresh!: (err: Error) => void
+    refreshUser.mockReturnValueOnce(new Promise((_, reject) => { failRefresh = reject }))
+    pollOrderStatus.mockResolvedValueOnce({ status: 'COMPLETED' })
+    const view = shallowMount(PaymentView, { props: { inlineRecharge: true }, global: { renderStubDefaultSlot: true } })
+    await flushPromises()
+    expect(view.emitted('credited')).toHaveLength(1)
+    expect(showSuccess).toHaveBeenCalledWith('dashboard.assistantSetup.credited')
+    expect(localStorage.getItem(key)).toBeNull()
+    expect(view.getComponent(AmountInput).props('modelValue')).toBeNull()
+    failRefresh(new Error('profile temporarily unavailable'))
+    await flushPromises()
+    expect(showError).toHaveBeenCalledWith('dashboard.assistantSetup.balanceError')
+    expect(view.emitted('credited')).toHaveLength(1)
+    expect(createOrder).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('returns from a restored refund to the selected amount only after acknowledgement', async () => {
+    pollOrderStatus.mockResolvedValueOnce({ status: 'REFUNDED' })
+    const view = shallowMount(PaymentView, { props: { inlineRecharge: true }, global: { renderStubDefaultSlot: true } })
+    await flushPromises()
+    const panel = view.getComponent({ name: 'PaymentStatusPanel' })
+    expect(panel.props('initiallyRefunded')).toBe(true)
+    expect(localStorage.getItem(key)).not.toBeNull()
+    panel.vm.$emit('done')
+    await flushPromises()
+    expect(view.getComponent(AmountInput).props('modelValue')).toBe(50)
+    expect(localStorage.getItem(key)).toBeNull()
+    expect(createOrder).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('restores the selected WeChat amount after a signed checkout and reload', async () => {
+    localStorage.removeItem(key)
+    routeState.query = { recharge: '1', wechat_resume_token: 'signed-payment', amount: '50' }
+    createOrder.mockResolvedValueOnce({ order_id: 72, amount: 53, pay_amount: 51, qr_code: 'demo-qr', out_trade_no: 'demo-72' })
+    const opts = { props: { inlineRecharge: true }, global: { renderStubDefaultSlot: true } }
+    const checkout = shallowMount(PaymentView, opts)
+    await flushPromises()
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({ amount: 0, wechat_resume_token: 'signed-payment' }))
+    expect(JSON.parse(localStorage.getItem(key)!)).toMatchObject({ orderId: 72, requestedAmount: 50 })
+    checkout.unmount()
+    routeState.query = {}
+    pollOrderStatus.mockResolvedValueOnce({ status: 'PENDING' })
+    const recovered = shallowMount(PaymentView, opts)
+    await flushPromises()
+    recovered.getComponent({ name: 'PaymentStatusPanel' }).vm.$emit('done')
+    await flushPromises()
+    expect(recovered.getComponent(AmountInput).props('modelValue')).toBe(50)
+    expect(createOrder).toHaveBeenCalledOnce()
+    recovered.unmount()
+  })
+
+  it('resumes a new signed checkout when the previous order was verified unpaid and closed', async () => {
+    routeState.query = { recharge: '1', wechat_resume: '1', wechat_resume_token: 'new-demo-token' }
+    pollOrderStatus.mockResolvedValueOnce({ status: 'FAILED' })
+    createOrder.mockRejectedValueOnce({ status: 400, message: 'test payment declined' })
+    const view = shallowMount(PaymentView, { props: { inlineRecharge: true } })
+    await flushPromises()
+    expect(createOrder).toHaveBeenCalledOnce()
+    expect(createOrder).toHaveBeenCalledWith(expect.objectContaining({ wechat_resume_token: 'new-demo-token' }))
+    expect(localStorage.getItem(key)).toBeNull()
+    view.unmount()
+  })
+
+  it('retains a restored order when its payment state cannot be verified', async () => {
+    pollOrderStatus.mockResolvedValueOnce(null)
+    const view = shallowMount(PaymentView, { props: { inlineRecharge: true }, global: { renderStubDefaultSlot: true } })
+    await flushPromises()
+    expect(localStorage.getItem(key)).not.toBeNull()
+    expect(view.findComponent({ name: 'PaymentStatusPanel' }).exists()).toBe(false)
+    expect(view.find('[data-testid=inline-recharge-submit]').exists()).toBe(false)
+    expect(createOrder).not.toHaveBeenCalled()
+    expect(view.get('[role=alert]').text()).toContain('dashboard.assistantSetup.orderLookupFailed')
+    pollOrderStatus.mockResolvedValueOnce({ status: 'FAILED', paid_at: '2026-04-20T12:01:00Z' })
+    view.getComponent('[label="dashboard.assistantSetup.checkOrder"]').vm.$emit('press')
+    await flushPromises()
+    expect(view.getComponent({ name: 'PaymentStatusPanel' }).props('initialSettlement')).toBe('credit_failed')
+    expect(localStorage.getItem(key)).not.toBeNull()
+    view.unmount()
+  })
+
+  it.each(['PENDING', 'PAID', 'RECHARGING', 'FAILED', 'COMPLETED'])('resumes a %s order without submitting again', async (status) => {
+    pollOrderStatus.mockReset().mockResolvedValue({ status, paid_at: status === 'PENDING' ? undefined : '2026-04-20T12:02:00Z' })
+    const wrapper = shallowMount(PaymentView, { props: { inlineRecharge: true } })
+    await flushPromises()
+    expect(pollOrderStatus).toHaveBeenCalledWith(42)
+    expect(createOrder).not.toHaveBeenCalled()
+    if (status === 'COMPLETED') {
+      expect(localStorage.getItem(key)).toBeNull()
+      expect(refreshUser).toHaveBeenCalledOnce()
+      expect(wrapper.emitted('credited')).toHaveLength(1)
+    } else {
+      expect(localStorage.getItem(key)).not.toBeNull()
+      expect(wrapper.getComponent({ name: 'PaymentStatusPanel' }).props()).toMatchObject({
+        orderId: 42, hero: true, waitForCredit: true,
+        initialSettlement: status === 'FAILED' ? 'credit_failed' : status === 'PENDING' ? null : 'processing',
+      })
+      expect(wrapper.emitted('credited')).toBeUndefined()
+    }
+    wrapper.unmount()
+  })
+})
 
 function checkoutInfoWithPlansFixture(options: {
   checkout?: Partial<CheckoutInfoResponse>
@@ -810,6 +1048,8 @@ describe('PaymentView WeChat JSAPI flow', () => {
       wechat_resume_token: 'resume-token-h5',
     }))
     expect(createOrder).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      amount: 0,
+      wechat_resume_token: 'resume-token-h5',
       payment_type: 'wxpay',
       is_mobile: false,
       payment_source: 'hosted_redirect',

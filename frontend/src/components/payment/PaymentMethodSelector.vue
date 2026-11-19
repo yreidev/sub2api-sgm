@@ -1,49 +1,60 @@
 <template>
   <div>
-    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+    <label v-if="!inline" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
       {{ t('payment.paymentMethod') }}
     </label>
     <div
       data-testid="payment-method-grid"
-      class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+      :class="inline ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4'"
     >
-      <button
-        v-for="method in sortedMethods"
-        :key="method.type"
-        type="button"
-        :title="methodLabel(method)"
-        :disabled="!method.available"
-        :class="[
-          'relative flex h-[60px] min-w-0 flex-col items-center justify-center rounded-lg border px-3 transition-all',
-          !method.available
-            ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-50 dark:border-dark-700 dark:bg-dark-800/50'
-            : selected === method.type
-              ? methodSelectedClass(method.type)
-              : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-dark-500',
-        ]"
-        @click="method.available && emit('select', method.type)"
-      >
-        <span class="flex w-full min-w-0 items-center justify-center gap-2">
-          <img :src="methodIcon(method.type)" :alt="methodLabel(method)" class="h-7 w-7 shrink-0 object-contain" />
-          <span class="flex min-w-0 flex-col items-start leading-none">
-            <span data-testid="payment-method-label" class="block w-full truncate text-base font-semibold">
-              {{ methodLabel(method) }}
-            </span>
-            <span
-              v-if="method.fee_rate > 0"
-              class="text-[10px] tracking-wide text-gray-500 dark:text-dark-400"
-            >
-              {{ t('payment.fee') }} {{ method.fee_rate }}%
+      <template v-for="method in sortedMethods" :key="method.type">
+        <HeroPaymentControl
+          v-if="inline"
+          :label="methodLabel(method)"
+          :icon="methodIcon(method.type)"
+          :detail="method.fee_rate > 0 ? t('payment.fee') + ' ' + method.fee_rate + '%' : undefined"
+          :selected="selected === method.type"
+          :disabled="!method.available"
+          @press="emit('select', method.type)"
+        />
+        <button
+          v-else
+          type="button"
+          :title="methodLabel(method)"
+          :disabled="!method.available"
+          :aria-pressed="selected === method.type"
+          :class="[
+            'relative flex h-[60px] min-w-0 flex-col items-center justify-center rounded-lg border px-3 transition-all',
+            !method.available
+              ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-50 dark:border-dark-700 dark:bg-dark-800/50'
+              : selected === method.type
+                ? methodSelectedClass(method.type)
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-dark-500',
+          ]"
+          @click="method.available && emit('select', method.type)"
+        >
+          <span class="flex w-full min-w-0 items-center justify-center gap-2">
+            <img :src="methodIcon(method.type)" alt="" class="h-7 w-7 shrink-0 object-contain" />
+            <span class="flex min-w-0 flex-col items-start leading-none">
+              <span data-testid="payment-method-label" class="block w-full truncate text-base font-semibold">
+                {{ methodLabel(method) }}
+              </span>
+              <span
+                v-if="method.fee_rate > 0"
+                class="text-[10px] tracking-wide text-gray-500 dark:text-dark-400"
+              >
+                {{ t('payment.fee') }} {{ method.fee_rate }}%
+              </span>
             </span>
           </span>
-        </span>
-      </button>
+        </button>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { METHOD_ORDER, isBuiltInAlipayMethod, isBuiltInWxpayMethod } from './providerConfig'
 import alipayIcon from '@/assets/icons/alipay.svg'
@@ -62,6 +73,7 @@ export interface PaymentMethodOption {
 const props = defineProps<{
   methods: PaymentMethodOption[]
   selected: string
+  inline?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -69,6 +81,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const HeroPaymentControl = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentControl.vue'))
 
 const METHOD_ICONS: Record<string, string> = {
   alipay: alipayIcon,

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-dark-900">
+  <div class="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-6 dark:bg-dark-900">
     <div class="w-full max-w-md space-y-6">
       <!-- Loading -->
       <div v-if="loading" class="flex items-center justify-center py-20">
@@ -19,7 +19,7 @@
             class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30">
             <div class="h-10 w-10 animate-spin rounded-full border-4 border-yellow-500 border-t-transparent"></div>
           </div>
-          <div v-else
+          <div v-else-if="!isRefunded"
             class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
             <svg class="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -29,7 +29,7 @@
             {{ statusTitle }}
           </h2>
           <p v-if="isPending" class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {{ t('payment.result.processingHint') }}
+            {{ t(creditFailed ? 'payment.result.creditFailedHint' : 'payment.result.processingHint') }}
           </p>
         </div>
         <!-- Order Info -->
@@ -41,7 +41,7 @@
             </div>
             <div v-if="order.out_trade_no" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderNo') }}</span>
-              <span class="font-medium text-gray-900 dark:text-white">{{ order.out_trade_no }}</span>
+              <span class="min-w-0 break-all text-right font-medium text-gray-900 dark:text-white">{{ order.out_trade_no }}</span>
             </div>
             <div v-if="hasAmountFields(order)" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.baseAmount') }}</span>
@@ -69,7 +69,7 @@
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.status') }}</span>
-              <OrderStatusBadge :status="displayOrderStatus(order.status)" />
+              <OrderStatusBadge :status="displayOrderStatus(order.status)" :paid-at="order.paid_at" />
             </div>
           </div>
         </div>
@@ -78,7 +78,7 @@
           <div class="space-y-3 text-sm">
             <div v-if="returnInfo.outTradeNo" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderId') }}</span>
-              <span class="font-medium text-gray-900 dark:text-white">{{ returnInfo.outTradeNo }}</span>
+              <span class="min-w-0 break-all text-right font-medium text-gray-900 dark:text-white">{{ returnInfo.outTradeNo }}</span>
             </div>
             <div v-if="returnInfo.money" class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.payAmount') }}</span>
@@ -91,8 +91,19 @@
           </div>
         </div>
         <!-- Actions -->
-        <div class="flex gap-3">
-          <button class="btn btn-secondary flex-1" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
+        <button
+          v-if="showHomeAction"
+          type="button"
+          class="btn btn-primary min-h-11 w-full"
+          @click="returnHome"
+        >
+          {{ t('dashboard.assistantSetup.backHome') }}
+        </button>
+        <button v-if="(showHomeAction && isPending) || creditFailed" class="btn btn-secondary min-h-11 w-full" @click="checkAgain">
+          {{ t('dashboard.assistantSetup.checkOrder') }}
+        </button>
+        <div v-if="!showHomeAction" class="flex flex-wrap gap-3">
+          <button v-if="!creditFailed" class="btn btn-secondary flex-1" @click="router.push('/purchase')">{{ t('payment.result.backToRecharge') }}</button>
           <button class="btn btn-primary flex-1" @click="router.push('/orders')">{{ t('payment.result.viewOrders') }}</button>
         </div>
       </template>
@@ -107,8 +118,12 @@ import { useRoute, useRouter } from 'vue-router'
 import OrderStatusBadge from '@/components/payment/OrderStatusBadge.vue'
 import {
   PAYMENT_RECOVERY_STORAGE_KEY,
+  assistantPaymentStorageKey,
   clearPaymentRecoverySnapshot,
+  isAssistantOrder,
+  rememberAssistantOrder,
   readPaymentRecoverySnapshot,
+  paymentSettlementState,
 } from '@/components/payment/paymentFlow'
 import { usePaymentStore } from '@/stores/payment'
 import { useAuthStore } from '@/stores/auth'
@@ -130,6 +145,17 @@ type ResolvedOrder = PaymentOrder | PublicOrderVerifyResult
 const order = ref<ResolvedOrder | null>(null)
 const loading = ref(true)
 const currency = ref('CNY')
+const assistantResult = ref(false)
+const sawCreditFailure = ref(false)
+const waitForCredit = computed(() => assistantResult.value || sawCreditFailure.value)
+const showHomeAction = computed(() => assistantResult.value || (authStore.isAuthenticated && !authStore.isAdmin))
+let recoveryKey = PAYMENT_RECOVERY_STORAGE_KEY
+let matchedRecovery: string | null = null
+let checkAgain = () => {}
+
+function returnHome() {
+  void router.push({ path: '/dashboard', query: { view: 'simple', recharge: isSuccess.value || isRefunded.value || (creditFailed.value && !assistantResult.value) ? undefined : '1' } })
+}
 
 interface ReturnInfo {
   outTradeNo: string
@@ -177,11 +203,13 @@ const isSuccess = computed(() => {
   return isSuccessStatus(order.value?.status)
 })
 
-const isPending = computed(() => {
-  return isPendingStatus(order.value?.status)
-})
+const creditFailed = computed(() => !!order.value && paymentSettlementState(order.value) === 'credit_failed')
+const isPending = computed(() => creditFailed.value || isPendingStatus(order.value?.status))
+const isRefunded = computed(() => order.value?.status === 'REFUNDED')
 
 const statusTitle = computed(() => {
+  if (isRefunded.value) return t('payment.status.refunded')
+  if (creditFailed.value) return t('payment.result.creditFailed')
   if (isSuccess.value) {
     return t('payment.result.success')
   }
@@ -201,6 +229,11 @@ function formatGatewayAmount(value: number): string {
 
 function setResolvedOrder(nextOrder: ResolvedOrder | null): void {
   order.value = nextOrder
+  if (nextOrder && authStore.user) {
+    assistantResult.value = isAssistantOrder(window.localStorage, authStore.user.id,
+      hasOrderId(nextOrder) ? nextOrder.id : 0, nextOrder.out_trade_no)
+  }
+  if (nextOrder && paymentSettlementState(nextOrder) === 'credit_failed') sawCreditFailure.value = true
   if (nextOrder && 'currency' in nextOrder && nextOrder.currency) {
     currency.value = normalizePaymentCurrency(nextOrder.currency)
   }
@@ -248,11 +281,13 @@ function displayOrderStatus(status: string): OrderStatus {
 }
 
 function isSuccessStatus(status: string | null | undefined): boolean {
-  return SUCCESS_STATUSES.has(normalizeOrderStatus(status))
+  const normalized = normalizeOrderStatus(status)
+  return waitForCredit.value ? normalized === 'COMPLETED' : SUCCESS_STATUSES.has(normalized)
 }
 
 function isPendingStatus(status: string | null | undefined): boolean {
-  return PENDING_STATUSES.has(normalizeOrderStatus(status))
+  const normalized = normalizeOrderStatus(status)
+  return PENDING_STATUSES.has(normalized) || (waitForCredit.value && (normalized === 'PAID' || normalized === 'RECHARGING'))
 }
 
 function readRouteQueryString(key: string): string {
@@ -272,35 +307,27 @@ function restoreRecoverySnapshot(context: {
     return null
   }
 
-  const rawSnapshot = window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)
-  if (!rawSnapshot) {
-    return null
-  }
-
-  if (context.resumeToken) {
-    return readPaymentRecoverySnapshot(rawSnapshot, {
-      resumeToken: context.resumeToken,
+  const userId = authStore.user?.id
+  const keys = userId ? [assistantPaymentStorageKey(userId), PAYMENT_RECOVERY_STORAGE_KEY] : [PAYMENT_RECOVERY_STORAGE_KEY]
+  if (!context.resumeToken && !context.routeOrderId && !context.routeOutTradeNo) return null
+  for (const key of keys) {
+    const raw = window.localStorage.getItem(key)
+    const restored = readPaymentRecoverySnapshot(raw, {
+      resumeToken: context.resumeToken || undefined,
+      allowExpired: key !== PAYMENT_RECOVERY_STORAGE_KEY,
     })
+    if (!restored) continue
+    if (!context.resumeToken) {
+      if (context.routeOrderId && restored.orderId !== context.routeOrderId) continue
+      if (context.routeOutTradeNo && restored.outTradeNo !== context.routeOutTradeNo) continue
+    }
+    recoveryKey = key
+    matchedRecovery = raw
+    assistantResult.value = key !== PAYMENT_RECOVERY_STORAGE_KEY
+    if (assistantResult.value && userId) rememberAssistantOrder(window.localStorage, userId, restored)
+    return restored
   }
-
-  if (!context.routeOrderId && !context.routeOutTradeNo) {
-    return null
-  }
-
-  const restored = readPaymentRecoverySnapshot(rawSnapshot)
-  if (!restored) {
-    return null
-  }
-
-  if (context.routeOrderId > 0 && restored.orderId !== context.routeOrderId) {
-    return null
-  }
-
-  if (context.routeOutTradeNo && restored.outTradeNo !== context.routeOutTradeNo) {
-    return null
-  }
-
-  return restored
+  return null
 }
 
 async function resolveOrderFromResumeToken(resumeToken: string): Promise<ResolvedOrder | null> {
@@ -334,13 +361,18 @@ function clearStatusRefreshTimer(): void {
 }
 
 function clearRecoverySnapshot(): void {
-  if (typeof window === 'undefined') return
-  clearPaymentRecoverySnapshot(window.localStorage, PAYMENT_RECOVERY_STORAGE_KEY)
+  if (!matchedRecovery || window.localStorage.getItem(recoveryKey) !== matchedRecovery) return
+  const matched = readPaymentRecoverySnapshot(matchedRecovery, { allowExpired: true })
+  if (order.value && matched && (hasOrderId(order.value)
+    ? order.value.id !== matched.orderId
+    : order.value.out_trade_no !== matched.outTradeNo)) return
+  clearPaymentRecoverySnapshot(window.localStorage, recoveryKey)
 }
 
-function clearRecoverySnapshotForTerminalStatus(status: string | null | undefined): void {
-  if (!status) return
-  if (!isPendingStatus(status)) {
+function clearRecoverySnapshotForTerminalStatus(order: ResolvedOrder): void {
+  if (paymentSettlementState(order) === 'credit_failed') return
+  const status = order.status
+  if (waitForCredit.value ? normalizeOrderStatus(status) === 'COMPLETED' : !isPendingStatus(status)) {
     clearRecoverySnapshot()
   }
 }
@@ -356,10 +388,10 @@ function scheduleStatusRefresh(refreshOrder: (() => Promise<ResolvedOrder | null
     const refreshedOrder = await refreshOrder()
     if (refreshedOrder) {
       setResolvedOrder(refreshedOrder)
-      clearRecoverySnapshotForTerminalStatus(refreshedOrder.status)
+      clearRecoverySnapshotForTerminalStatus(refreshedOrder)
     }
 
-    if (isPendingStatus(order.value?.status)) {
+    if (isPending.value) {
       scheduleStatusRefresh(refreshOrder)
     }
   }, STATUS_REFRESH_INTERVAL_MS)
@@ -457,11 +489,15 @@ onMounted(async () => {
     return null
   }
 
-  if (isPendingStatus(order.value?.status)) {
+  checkAgain = () => {
+    refreshAttempts.value = 0
+    scheduleStatusRefresh(refreshOrder)
+  }
+  if (isPending.value) {
     scheduleStatusRefresh(refreshOrder)
   } else if (order.value) {
-    clearRecoverySnapshotForTerminalStatus(order.value.status)
-  } else if (returnInfo.value) {
+    clearRecoverySnapshotForTerminalStatus(order.value)
+  } else if (returnInfo.value && !assistantResult.value) {
     clearRecoverySnapshot()
   }
   loading.value = false

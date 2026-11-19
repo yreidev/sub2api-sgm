@@ -5,6 +5,15 @@ export default {
   },
   // Home Page
   home: {
+    backToSite: 'Back to the site homepage',
+    connectAssistant: 'Connect your AI assistant',
+    assistantIntro: 'Configure your assistant, check your balance and see the cost of each request in one account.',
+    connectTitle: 'Configure your assistant',
+    connectHint: 'Choose an available model, then enter the API base URL and key in your assistant’s OpenAI-compatible settings.',
+    balanceTitle: 'Check your balance',
+    balanceHint: 'See your balance in the account overview. You can also top up here when the site offers it.',
+    historyTitle: 'Review your usage',
+    historyHint: 'See today’s spend and open any request to check its model, token counts and cost.',
     viewOnGithub: 'View on GitHub',
     viewDocs: 'View Documentation',
     docs: 'Docs',

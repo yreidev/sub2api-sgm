@@ -9,6 +9,27 @@ import type {
 
 export const PAYMENT_RECOVERY_STORAGE_KEY = 'payment.recovery.current'
 
+export function assistantPaymentStorageKey(userId: number): string {
+  return 'payment.recovery.assistant.' + userId
+}
+
+// Keep only order identifiers after checkout credentials have been discarded.
+function assistantOriginKeys(userId: number, orderId: number, outTradeNo: string): string[] {
+  const prefix = 'payment.origin.assistant.' + userId
+  const keys = []
+  if (orderId > 0) keys.push(prefix + '.id.' + orderId)
+  if (outTradeNo) keys.push(prefix + '.trade.' + outTradeNo)
+  return keys
+}
+
+export function rememberAssistantOrder(storage: Storage, userId: number, snapshot: PaymentRecoverySnapshot): void {
+  for (const key of assistantOriginKeys(userId, snapshot.orderId, snapshot.outTradeNo)) storage.setItem(key, '1')
+}
+
+export function isAssistantOrder(storage: Storage, userId: number, orderId: number, outTradeNo: string): boolean {
+  return assistantOriginKeys(userId, orderId, outTradeNo).some(key => storage.getItem(key) === '1')
+}
+
 const VISIBLE_METHOD_ALIASES = {
   alipay: 'alipay',
   alipay_direct: 'alipay',
@@ -34,6 +55,7 @@ export type PaymentLaunchKind =
 export interface PaymentRecoverySnapshot {
   orderId: number
   amount: number
+  requestedAmount?: number
   qrCode: string
   expiresAt: string
   paymentType: string
@@ -273,7 +295,7 @@ export function clearPaymentRecoverySnapshot(
 
 export function readPaymentRecoverySnapshot(
   raw: string | null | undefined,
-  options: { now?: number; resumeToken?: string } = {},
+  options: { now?: number; resumeToken?: string; allowExpired?: boolean } = {},
 ): PaymentRecoverySnapshot | null {
   if (!raw) return null
 
@@ -282,6 +304,7 @@ export function readPaymentRecoverySnapshot(
     if (
       typeof parsed.orderId !== 'number'
       || typeof parsed.amount !== 'number'
+      || (parsed.requestedAmount != null && (typeof parsed.requestedAmount !== 'number' || !Number.isFinite(parsed.requestedAmount)))
       || typeof parsed.qrCode !== 'string'
       || typeof parsed.expiresAt !== 'string'
       || typeof parsed.paymentType !== 'string'
@@ -303,7 +326,7 @@ export function readPaymentRecoverySnapshot(
 
     const now = options.now ?? Date.now()
     const expiresAt = Date.parse(parsed.expiresAt)
-    if (Number.isFinite(expiresAt) && expiresAt <= now) {
+    if (!options.allowExpired && Number.isFinite(expiresAt) && expiresAt <= now) {
       return null
     }
     if (options.resumeToken && parsed.resumeToken !== options.resumeToken) {
@@ -313,6 +336,7 @@ export function readPaymentRecoverySnapshot(
     return {
       orderId: parsed.orderId,
       amount: parsed.amount,
+      ...(parsed.requestedAmount != null ? { requestedAmount: parsed.requestedAmount } : {}),
       qrCode: parsed.qrCode,
       expiresAt: parsed.expiresAt,
       paymentType: parsed.paymentType,
@@ -333,4 +357,35 @@ export function readPaymentRecoverySnapshot(
   } catch {
     return null
   }
+}
+
+export function readCheckoutSnapshot(
+  storage: Pick<Storage, 'getItem'>,
+  userId: number | undefined,
+  channel: 'stripe' | 'airwallex',
+  order: { orderId?: number; outTradeNo?: string; resumeToken?: string },
+): PaymentRecoverySnapshot | null {
+  const keys = [PAYMENT_RECOVERY_STORAGE_KEY]
+  if (userId && (order.orderId || order.outTradeNo || order.resumeToken)) {
+    keys.unshift(assistantPaymentStorageKey(userId))
+  }
+  for (const key of keys) {
+    const snapshot = readPaymentRecoverySnapshot(storage.getItem(key), { resumeToken: order.resumeToken })
+    if (!snapshot?.clientSecret) continue
+    if (order.orderId !== undefined && snapshot.orderId !== order.orderId) continue
+    if (order.outTradeNo && snapshot.outTradeNo !== order.outTradeNo) continue
+    const isAirwallex = snapshot.paymentType === 'airwallex'
+    if (isAirwallex !== (channel === 'airwallex')) continue
+    if (isAirwallex && !snapshot.intentId) continue
+    return snapshot
+  }
+  return null
+}
+
+export type SettlementState = 'processing' | 'credit_failed' | null
+
+export function paymentSettlementState(order: { status: string; paid_at?: string | null }): SettlementState {
+  if (order.status === 'FAILED' && order.paid_at) return 'credit_failed'
+  if (order.status === 'PAID' || order.status === 'RECHARGING') return 'processing'
+  return null
 }

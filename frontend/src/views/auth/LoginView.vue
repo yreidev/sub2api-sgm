@@ -2,11 +2,11 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div>
+        <h1 class="auth-heading">
           {{ t('auth.welcomeBack') }}
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        </h1>
+        <p class="auth-intro">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
@@ -21,7 +21,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="email"
               v-model="formData.email"
               type="email"
@@ -45,7 +45,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="password"
               v-model="formData.password"
               :type="showPassword ? 'text' : 'password'"
@@ -56,25 +56,26 @@
               :class="{ 'input-error': errors.password }"
               :placeholder="t('auth.passwordPlaceholder')"
             />
-            <button
+            <HeroButton icon-only
               type="button"
-              @click="showPassword = !showPassword"
+              :aria-label="t(showPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
+              @press="showPassword = !showPassword"
               :disabled="authActionDisabled"
               class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
-            </button>
+            </HeroButton>
           </div>
           <div class="mt-1 flex items-center justify-between">
             <span></span>
-            <router-link
+            <HeroLink
               v-if="passwordResetEnabled && !backendModeEnabled"
               to="/forgot-password"
               class="text-sm font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
             >
               {{ t('auth.forgotPassword') }}
-            </router-link>
+            </HeroLink>
           </div>
         </div>
 
@@ -98,10 +99,10 @@
         </div>
 
         <!-- Submit Button -->
-        <button
+        <HeroButton variant="primary"
           type="submit"
           :disabled="authActionDisabled || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary w-full"
+          full-width class="btn btn-primary"
         >
           <svg
             v-if="isLoading"
@@ -125,7 +126,7 @@
           </svg>
           <Icon v-else name="login" size="md" class="mr-2" />
           {{ isLoading ? t('auth.signingIn') : t('auth.signIn') }}
-        </button>
+        </HeroButton>
 
         <LoginAgreementPrompt
           v-if="loginAgreementEnabled"
@@ -148,16 +149,17 @@
             <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
           </div>
 
-          <button
+          <HeroButton variant="secondary"
             v-if="showPasskeyLogin"
+            data-testid="passkey-login"
             type="button"
-            class="btn btn-secondary w-full"
+            full-width class="btn btn-secondary"
             :disabled="authActionDisabled"
-            @click="handlePasskeyLogin"
+            @press="handlePasskeyLogin"
           >
             <Icon name="key" size="md" class="mr-2" />
             {{ passkeyLoading ? t('auth.passkeySigningIn') : t('auth.passkeySignIn') }}
-          </button>
+          </HeroButton>
 
           <EmailOAuthButtons
             :disabled="authActionDisabled"
@@ -200,12 +202,12 @@
     <template v-if="!backendModeEnabled && publicSettingsLoaded && registrationEnabled" #footer>
       <p class="text-gray-500 dark:text-dark-400">
         {{ t('auth.dontHaveAccount') }}
-        <router-link
+        <HeroLink
           to="/register"
           class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
         >
           {{ t('auth.signUp') }}
-        </router-link>
+        </HeroLink>
       </p>
     </template>
   </AuthLayout>
@@ -222,6 +224,9 @@
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
+import HeroLink from '@/components/hero/HeroLink.vue'
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'

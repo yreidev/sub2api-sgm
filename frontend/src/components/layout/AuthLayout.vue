@@ -1,88 +1,56 @@
 <template>
-  <div class="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-    <!-- Background -->
-    <div
-      class="absolute inset-0 bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950"
-    ></div>
-
-    <!-- Decorative Elements -->
-    <div class="pointer-events-none absolute inset-0 overflow-hidden">
-      <!-- Gradient Orbs -->
-      <div
-        class="absolute -right-40 -top-40 h-80 w-80 rounded-full bg-primary-400/20 blur-3xl"
-      ></div>
-      <div
-        class="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-primary-500/15 blur-3xl"
-      ></div>
-      <div
-        class="absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-300/10 blur-3xl"
-      ></div>
-
-      <!-- Grid Pattern -->
-      <div
-        class="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
-      ></div>
-    </div>
-
-    <!-- Content Container -->
-    <div class="relative z-10 w-full max-w-md">
-      <!-- Logo/Brand -->
-      <div class="mb-8 text-center">
-        <!-- Custom Logo or Default Logo -->
-        <template v-if="settingsLoaded">
-          <div
-            class="mb-4 inline-flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl shadow-lg shadow-primary-500/30"
-          >
-            <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
-          </div>
-          <h1 class="text-gradient mb-2 text-3xl font-bold">
-            {{ siteName }}
-          </h1>
-          <p class="text-sm text-gray-500 dark:text-dark-400">
-            {{ siteSubtitle }}
-          </p>
-        </template>
-      </div>
-
-      <!-- Card Container -->
-      <div class="card-glass rounded-2xl p-8 shadow-glass">
+  <PublicLayout>
+    <div class="auth-wrap">
+      <HeroCard class="auth-card">
         <slot />
-      </div>
-
-      <!-- Footer Links -->
-      <div class="mt-6 text-center text-sm">
-        <slot name="footer" />
-      </div>
-
-      <!-- Copyright -->
-      <div class="mt-8 text-center text-xs text-gray-400 dark:text-dark-500">
-        &copy; {{ currentYear }} {{ siteName }}. All rights reserved.
-      </div>
+        <div v-if="$slots.footer" class="auth-links"><slot name="footer" /></div>
+      </HeroCard>
     </div>
-  </div>
+  </PublicLayout>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { useAppStore } from '@/stores'
-import { sanitizeUrl } from '@/utils/url'
-
-const appStore = useAppStore()
-
-const siteName = computed(() => appStore.siteName || 'Sub2API')
-const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
-const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'Subscription to API Conversion Platform')
-const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
-
-const currentYear = computed(() => new Date().getFullYear())
-
-onMounted(() => {
-  appStore.fetchPublicSettings()
-})
+import HeroCard from '@/components/hero/HeroCard.vue'
+import PublicLayout from './PublicLayout.vue'
 </script>
 
 <style scoped>
-.text-gradient {
-  @apply bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent;
+.auth-wrap { display: flex; justify-content: center; padding-block: clamp(1.5rem, 6vw, 4.25rem); }
+.auth-card[data-slot="card"] { display: block;
+  isolation: isolate;
+  position: relative;
+  width: min(100%, 31rem);
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  overflow-wrap: anywhere;
 }
+.auth-card::before {
+  position: absolute;
+  content: "";
+  z-index: -1;
+  inset: 0 0 auto auto;
+  width: 48%;
+  height: 5rem;
+  border-top-right-radius: inherit;
+  background: url('../../assets/sgm-balance-wave.webp') center / cover;
+  opacity: var(--wave-opacity);
+  mask-image: linear-gradient(210deg, #000, transparent 68%);
+}
+.auth-card :deep(.auth-heading) { margin: 0; font-size: clamp(1.75rem, 4vw, 2rem); line-height: 1.23; font-weight: 500; letter-spacing: -.03em; color: var(--ink); }
+.auth-card :deep(.auth-intro) { margin-top: .5rem; line-height: 1.55; color: var(--muted); }
+.auth-card :deep(.input-label) { font-size: .9375rem; font-weight: 500; color: var(--ink); }
+.auth-card :deep(.input) { min-height: 46px; border-radius: 10px; background: var(--field); color: var(--ink); font-size: 1rem; }
+.auth-card :deep(.input:not(.input-error)) { border-color: var(--field-line); }
+.auth-card :deep(.input:focus) { outline: 2px solid var(--focus); outline-offset: 1px; box-shadow: none; }
+.auth-card :deep(.input.pl-11) { padding-inline-start: 2.75rem; }
+.auth-card :deep(.input.pr-11) { padding-inline-end: 2.75rem; }
+.auth-card :deep(.button.absolute) { position: absolute; inset-block: 0; inset-inline-end: 0; height: 100%; min-width: 44px; padding-inline: .625rem; }
+.auth-card :deep(.input-hint) { color: var(--muted); }
+.auth-card :deep(.btn-primary) { min-height: 46px; border-radius: 10px; color: var(--on-accent); background: var(--accent); box-shadow: none; }
+.auth-card :deep(.btn-primary:hover:not(:disabled)) { filter: brightness(.93); }
+.auth-links { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .9375rem; text-align: center; }
+.auth-links :deep(a), .auth-card :deep(a.text-primary-600) { color: var(--accent); }
+.auth-links :deep(a) { display: inline-flex; align-items: center; min-height: 44px; }
 </style>

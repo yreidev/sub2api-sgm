@@ -176,6 +176,17 @@ describe('useAuthStore', () => {
       expect(store.isAuthenticated).toBe(true)
     })
 
+    it.each([fakeAdminUser, fakeUser])('用服务端角色核实缓存的管理员身份', async (serverUser) => {
+      localStorage.setItem('auth_token', 'saved-token')
+      localStorage.setItem('auth_user', JSON.stringify(fakeAdminUser))
+      mockGetCurrentUser.mockResolvedValue({ data: serverUser })
+      const store = useAuthStore()
+      const restored = store.checkAuth()
+      expect(store.isAdmin).toBe(false)
+      await restored
+      expect(store.isAdmin).toBe(serverUser.role === 'admin')
+    })
+
     it('localStorage 无数据时保持未认证状态', () => {
       const store = useAuthStore()
       store.checkAuth()

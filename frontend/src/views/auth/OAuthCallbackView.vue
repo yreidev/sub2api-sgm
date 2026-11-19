@@ -22,17 +22,17 @@
         <div class="mt-6 space-y-4">
           <div>
             <label class="input-label">{{ t('auth.emailLabel') }}</label>
-            <input
+            <HeroInput
               class="input w-full"
               type="email"
-              :value="registrationEmail"
+              :model-value="registrationEmail"
               readonly
               disabled
             />
           </div>
           <div>
             <label class="input-label">{{ t('auth.passwordLabel') }}</label>
-            <input
+            <HeroInput
               v-model="password"
               type="password"
               class="input w-full"
@@ -44,7 +44,7 @@
           </div>
           <div>
             <label class="input-label">{{ t('auth.confirmPassword') }}</label>
-            <input
+            <HeroInput
               v-model="confirmPassword"
               type="password"
               class="input w-full"
@@ -56,7 +56,7 @@
           </div>
           <div v-if="invitationRequired">
             <label class="input-label">{{ t('auth.invitationCodeLabel') }}</label>
-            <input
+            <HeroInput
               v-model="invitationCode"
               type="text"
               class="input w-full"
@@ -68,14 +68,14 @@
           <p v-if="registrationError" class="text-sm text-red-600 dark:text-red-400">
             {{ registrationError }}
           </p>
-          <button
-            class="btn btn-primary w-full"
+          <HeroButton variant="primary"
+            full-width class="btn btn-primary"
             type="button"
             :disabled="isSubmitting || !canSubmitRegistration"
-            @click="handleSubmitRegistration"
+            @press="handleSubmitRegistration"
           >
             {{ isSubmitting ? t('common.processing') : t('auth.oidc.completeRegistration') }}
-          </button>
+          </HeroButton>
         </div>
       </div>
 
@@ -86,9 +86,9 @@
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
           {{ t('auth.oauth.invalidCallbackHint') }}
         </p>
-        <button class="btn btn-primary mt-6" type="button" @click="router.replace('/login')">
+        <HeroButton variant="primary" class="btn btn-primary mt-6" type="button" @press="router.replace('/login')">
           {{ t('auth.backToLogin') }}
-        </button>
+        </HeroButton>
       </div>
 
       <div v-else class="card p-6">
@@ -103,40 +103,40 @@
           <div>
             <label class="input-label">{{ t('auth.oauth.code') }}</label>
             <div class="flex gap-2">
-              <input class="input flex-1 font-mono text-sm" :value="code" readonly />
-              <button class="btn btn-secondary" type="button" :disabled="!code" @click="copy(code)">
+              <HeroInput class="input flex-1 font-mono text-sm" :model-value="code" readonly />
+              <HeroButton variant="secondary" class="btn btn-secondary" type="button" :disabled="!code" @press="copy(code)">
                 {{ t('common.copy') }}
-              </button>
+              </HeroButton>
             </div>
           </div>
 
           <div>
             <label class="input-label">{{ t('auth.oauth.state') }}</label>
             <div class="flex gap-2">
-              <input class="input flex-1 font-mono text-sm" :value="state" readonly />
-              <button
+              <HeroInput class="input flex-1 font-mono text-sm" :model-value="state" readonly />
+              <HeroButton variant="secondary"
                 class="btn btn-secondary"
                 type="button"
                 :disabled="!state"
-                @click="copy(state)"
+                @press="copy(state)"
               >
                 {{ t('common.copy') }}
-              </button>
+              </HeroButton>
             </div>
           </div>
 
           <div>
             <label class="input-label">{{ t('auth.oauth.fullUrl') }}</label>
             <div class="flex gap-2">
-              <input class="input flex-1 font-mono text-xs" :value="fullUrl" readonly />
-              <button
+              <HeroInput class="input flex-1 font-mono text-xs" :model-value="fullUrl" readonly />
+              <HeroButton variant="secondary"
                 class="btn btn-secondary"
                 type="button"
                 :disabled="!fullUrl"
-                @click="copy(fullUrl)"
+                @press="copy(fullUrl)"
               >
                 {{ t('common.copy') }}
-              </button>
+              </HeroButton>
             </div>
           </div>
         </div>
@@ -146,6 +146,8 @@
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'

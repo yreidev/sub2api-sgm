@@ -2,11 +2,11 @@
   <AuthLayout>
     <div class="space-y-6">
       <!-- Title -->
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div>
+        <h1 class="auth-heading">
           {{ t('auth.forgotPasswordTitle') }}
-        </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        </h1>
+        <p class="auth-intro">
           {{ t('auth.forgotPasswordHint') }}
         </p>
       </div>
@@ -30,13 +30,13 @@
         </div>
 
         <div class="text-center">
-          <router-link
+          <HeroLink
             to="/login"
             class="inline-flex items-center gap-2 font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
           >
             <Icon name="arrowLeft" size="sm" />
             {{ t('auth.backToLogin') }}
-          </router-link>
+          </HeroLink>
         </div>
       </div>
 
@@ -51,7 +51,7 @@
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
               <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
             </div>
-            <input
+            <HeroInput
               id="email"
               v-model="formData.email"
               type="email"
@@ -86,10 +86,10 @@
         </div>
 
         <!-- Submit Button -->
-        <button
+        <HeroButton variant="primary"
           type="submit"
           :disabled="isLoading || (turnstileEnabled && !turnstileToken)"
-          class="btn btn-primary w-full"
+          full-width class="btn btn-primary"
         >
           <svg
             v-if="isLoading"
@@ -113,7 +113,7 @@
           </svg>
           <Icon v-else name="mail" size="md" class="mr-2" />
           {{ isLoading ? t('auth.sendingResetLink') : t('auth.sendResetLink') }}
-        </button>
+        </HeroButton>
       </form>
     </div>
 
@@ -121,18 +121,21 @@
     <template #footer>
       <p class="text-gray-500 dark:text-dark-400">
         {{ t('auth.rememberedPassword') }}
-        <router-link
+        <HeroLink
           to="/login"
           class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
         >
           {{ t('auth.signIn') }}
-        </router-link>
+        </HeroLink>
       </p>
     </template>
   </AuthLayout>
 </template>
 
 <script setup lang="ts">
+import HeroButton from '@/components/hero/HeroButton.vue'
+import HeroInput from '@/components/hero/HeroInput.vue'
+import HeroLink from '@/components/hero/HeroLink.vue'
 import { computed, ref, reactive, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'

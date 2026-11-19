@@ -4,6 +4,7 @@ import AirwallexPaymentView from '../AirwallexPaymentView.vue'
 import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 
 const mocks = vi.hoisted(() => ({ init: vi.fn(), redirectToCheckout: vi.fn() }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: null }) }))
 vi.mock('@airwallex/components-sdk', () => ({ init: mocks.init }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ query: {} }), useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('vue-i18n', async () => ({

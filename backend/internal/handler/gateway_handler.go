@@ -23,6 +23,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/typesafe"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
@@ -1228,6 +1229,27 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 	writeModelsListResponse(c, claude.DefaultModels)
 }
 
+// AssistantModels lists Chat Completions models for the signed-in user's assistant group.
+func (h *GatewayHandler) AssistantModels(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	ctx := c.Request.Context()
+	group, err := h.apiKeyService.GetAssistantGroup(ctx, subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	if group == nil {
+		response.ErrorFrom(c, service.ErrAssistantKeyGroup)
+		return
+	}
+	modelIDs := h.compositeClientModelIDs(ctx, group, service.CompositeRouteEndpointChatCompletions, nil)
+	response.Success(c, service.ConcreteTextModelIDs(modelIDs))
+}
+
 // CodexModels returns the effective group model list using the manifest shape
 // expected by Codex custom providers. Official OpenAI groups continue to use
 // OpenAIGatewayHandler.CodexModels so their live upstream metadata is preserved.
@@ -1275,19 +1297,7 @@ func (h *GatewayHandler) codexModelIDsForGroup(ctx context.Context, group *servi
 		platform = group.Platform
 	}
 	if platform == service.PlatformComposite {
-		availableModels := h.compositeAvailableModels(ctx, groupID, service.CompositeRouteEndpointResponses, false)
-		fallbackModels := defaultCodexModelIDsForPlatform(service.PlatformComposite)
-		models := availableModels
-		if len(models) == 0 {
-			models = fallbackModels
-		}
-		if group.ModelAllowlistEnabled() {
-			models = group.ModelAllowlist.FilterForListing(models)
-		}
-		if filtered, err := h.gatewayService.FilterCompositeCodexModels(ctx, group.ID, models); err == nil {
-			return filtered
-		}
-		return models
+		return h.compositeClientModelIDs(ctx, group, service.CompositeRouteEndpointResponses, defaultCodexModelIDsForPlatform(service.PlatformComposite))
 	}
 
 	availableModels := h.gatewayService.GetAvailableModels(ctx, groupID, platform)
@@ -1299,6 +1309,23 @@ func (h *GatewayHandler) codexModelIDsForGroup(ctx context.Context, group *servi
 		return availableModels
 	}
 	return fallbackModels
+}
+
+func (h *GatewayHandler) compositeClientModelIDs(ctx context.Context, group *service.Group, endpoint string, fallback []string) []string {
+	models := h.compositeAvailableModels(ctx, &group.ID, endpoint, false)
+	if len(models) == 0 {
+		models = fallback
+	}
+	if len(models) == 0 {
+		return nil
+	}
+	if group.ModelAllowlistEnabled() {
+		models = group.ModelAllowlist.FilterForListing(models)
+	}
+	if filtered, err := h.gatewayService.FilterCompositeClientModels(ctx, group.ID, endpoint, models); err == nil {
+		return filtered
+	}
+	return models
 }
 
 // compositeAvailableModels lists the models the composite group can serve.

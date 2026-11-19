@@ -1643,11 +1643,11 @@ func (s *GatewayService) GetCompositeRouteModels(ctx context.Context, groupID *i
 	return s.compositeResolver.ListExactPublicModels(ctx, *groupID, endpoint, includeSystemOne)
 }
 
-func (s *GatewayService) FilterCompositeCodexModels(ctx context.Context, groupID int64, models []string) ([]string, error) {
+func (s *GatewayService) FilterCompositeClientModels(ctx context.Context, groupID int64, endpoint string, models []string) ([]string, error) {
 	if s == nil || s.compositeResolver == nil {
 		return models, nil
 	}
-	return s.compositeResolver.FilterCodexModels(ctx, groupID, models)
+	return s.compositeResolver.FilterClientModels(ctx, groupID, endpoint, models)
 }
 
 // GetSchedulablePlatforms returns the concrete platforms that currently have

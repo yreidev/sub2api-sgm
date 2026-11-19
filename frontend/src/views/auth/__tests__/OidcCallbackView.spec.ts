@@ -227,7 +227,7 @@ describe('OidcCallbackView', () => {
     expect(replace).not.toHaveBeenCalled()
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
-    await checkboxes[0].setValue(false)
+    await checkboxes[0].trigger('click')
 
     await wrapper.findAll('button')[0].trigger('click')
     await flushPromises()
@@ -376,7 +376,7 @@ describe('OidcCallbackView', () => {
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[1].setValue(false)
+    await checkboxes[1].trigger('click')
     await wrapper.find('input[type="text"]').setValue('invite-code')
     await wrapper.find('button').trigger('click')
 
@@ -469,7 +469,7 @@ describe('OidcCallbackView', () => {
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[1].setValue(false)
+    await checkboxes[1].trigger('click')
     await wrapper.get('[data-testid="oidc-create-account-email"]').setValue('  new@example.com  ')
     await wrapper.get('[data-testid="oidc-create-account-password"]').setValue('secret-123')
     await wrapper.get('[data-testid="oidc-create-account-verify-code"]').setValue('246810')
@@ -619,7 +619,7 @@ describe('OidcCallbackView', () => {
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[0].setValue(false)
+    await checkboxes[0].trigger('click')
     await wrapper.get('[data-testid="oidc-bind-login-email"]').setValue('existing@example.com')
     await wrapper.get('[data-testid="oidc-bind-login-password"]').setValue('secret-password')
     await wrapper.get('[data-testid="oidc-bind-login-submit"]').trigger('click')

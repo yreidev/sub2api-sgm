@@ -16,7 +16,7 @@ const {
   pushMock: vi.fn(),
   verifyActionMock: vi.fn(),
   appStoreMock: {
-    cachedPublicSettings: null as { promo_code_enabled?: boolean } | null,
+    cachedPublicSettings: null as { promo_code_enabled?: boolean; registration_enabled?: boolean } | null,
     showError: (...args: unknown[]) => showErrorMock(...args),
     showSuccess: vi.fn(),
     showWarning: vi.fn()
@@ -107,6 +107,30 @@ describe('RegisterView', () => {
     verifyActionMock.mockResolvedValue({ token: 'ticket', randstr: 'randstr' })
     getPublicSettingsMock.mockResolvedValue(publicSettings)
     registerMock.mockResolvedValue({})
+  })
+
+  it('hides signup when closed and presents the sign-in link', async () => {
+    appStoreMock.cachedPublicSettings = { registration_enabled: false }
+    getPublicSettingsMock.mockResolvedValueOnce({ ...publicSettings, registration_enabled: false, google_oauth_enabled: true })
+    const wrapper = mountRegister()
+    expect(wrapper.find('form').exists()).toBe(false)
+    await flushPromises()
+    expect(wrapper.text()).toContain('auth.registrationDisabled')
+    expect(wrapper.find('email-o-auth-buttons-stub').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'RouterLink' }).attributes('to')).toBe('/login')
+    wrapper.unmount()
+  })
+
+  it('allows retrying a failed settings request before submitting any credentials', async () => {
+    getPublicSettingsMock.mockRejectedValueOnce(new Error('settings offline'))
+    const wrapper = mountRegister()
+    await flushPromises()
+    expect(wrapper.find('form').exists()).toBe(false)
+    await wrapper.get('[role="alert"] button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('form').exists()).toBe(true)
+    expect(registerMock).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('does not flash the promo-code field before disabled settings finish loading', async () => {

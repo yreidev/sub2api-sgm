@@ -419,7 +419,7 @@ describe('WechatCallbackView', () => {
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[1].setValue(false)
+    await checkboxes[1].trigger('click')
 
     const buttons = wrapper.findAll('button')
     expect(buttons).toHaveLength(1)
@@ -505,7 +505,7 @@ describe('WechatCallbackView', () => {
     expect(wrapper.text()).toContain('WeChat Nick')
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[0].setValue(false)
+    await checkboxes[0].trigger('click')
     await wrapper.get('input[type="text"]').setValue(' INVITE-CODE ')
     await wrapper.get('button').trigger('click')
     await flushPromises()
@@ -689,7 +689,7 @@ describe('WechatCallbackView', () => {
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[1].setValue(false)
+    await checkboxes[1].trigger('click')
     await wrapper.get('[data-testid="wechat-create-account-email"]').setValue('  new@example.com  ')
     await wrapper.get('[data-testid="wechat-create-account-password"]').setValue('secret-123')
     await wrapper.get('[data-testid="wechat-create-account-verify-code"]').setValue('246810')
@@ -866,7 +866,7 @@ describe('WechatCallbackView', () => {
 
     const checkboxes = wrapper.findAll('input[type="checkbox"]')
     expect(checkboxes).toHaveLength(2)
-    await checkboxes[0].setValue(false)
+    await checkboxes[0].trigger('click')
     await wrapper.get('[data-testid="wechat-bind-login-email"]').setValue('existing@example.com')
     await wrapper.get('[data-testid="wechat-bind-login-password"]').setValue('secret-password')
     await wrapper.get('[data-testid="wechat-bind-login-submit"]').trigger('click')

@@ -2,82 +2,110 @@
   <div class="space-y-4">
     <!-- Quick Amount Buttons -->
     <div>
-      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <p v-if="!inline" class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ t('payment.quickAmounts') }}
-      </label>
-      <div class="grid grid-cols-3 gap-x-4 gap-y-4 pt-2">
-        <button
-          v-for="amt in filteredAmounts"
-          :key="amt"
-          type="button"
-          :class="[
-            'relative rounded-lg border-2 px-3 py-3 text-center font-medium transition-colors',
-            modelValue === amt
-              ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-400 dark:bg-primary-900/40 dark:text-primary-300'
-              : quoteFor(amt).percent > 0
-                ? 'border-red-200 bg-white text-gray-700 hover:border-red-300 dark:border-red-500/40 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-red-400/60'
-                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-dark-500',
-          ]"
-          :data-testid="`quick-amount-${amt}`"
-          @click="selectAmount(amt)"
-        >
-          <!-- 促销价签（单行）：仅命中档位的金额显示；红底白字、内圈点线、右侧圆孔、整体旋转 -->
-          <span
-            v-if="quoteFor(amt).percent > 0"
-            class="pointer-events-none absolute -right-2 -top-3 z-10 rotate-12"
-            data-testid="quick-amount-bonus-badge"
-          >
-            <span
-              class="relative flex items-center gap-1 whitespace-nowrap rounded bg-red-600 py-0.5 pl-1.5 pr-1 text-[11px] font-extrabold leading-tight tracking-tight text-white shadow-md ring-2 ring-white before:pointer-events-none before:absolute before:inset-[2px] before:rounded-sm before:border before:border-dotted before:border-white/70 dark:bg-red-500 dark:ring-dark-800"
-            >
-              <span>{{ badgeText(amt) }}</span>
-              <span class="h-1 w-1 shrink-0 rounded-full bg-white"></span>
-            </span>
-          </span>
-          <span class="block">{{ amt }}</span>
-          <!-- 配置了优惠阶梯时，所有按钮都显示第二行，保持高度一致：赠金显示到账 USD，折扣显示折后实付 -->
-          <span
-            v-if="showSecondLine"
+      </p>
+      <div :class="inline ? 'sgm-recharge-amounts' : 'grid grid-cols-3 gap-x-4 gap-y-4 pt-2 max-[389px]:grid-cols-2'">
+        <template v-for="amt in filteredAmounts" :key="amt">
+          <HeroPaymentControl
+            v-if="inline"
+            :label="amountNumber.format(amt)"
+            :currency="paymentCurrency"
+            :detail="secondLine(amt)"
+            :badge="quoteFor(amt).percent > 0 ? badgeText(amt) : undefined"
+            :selected="modelValue === amt"
+            :data-testid="`quick-amount-${amt}`"
+            @press="selectAmount(amt)"
+          />
+          <button
+            v-else
+            type="button"
             :class="[
-              'mt-0.5 block text-[11px] font-normal leading-tight',
-              quoteFor(amt).percent > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-400 dark:text-gray-500',
+              'relative min-w-0 rounded-lg border-2 px-3 py-3 text-center font-medium transition-colors',
+              modelValue === amt
+                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-400 dark:bg-primary-900/40 dark:text-primary-300'
+                : quoteFor(amt).percent > 0
+                  ? 'border-red-200 bg-white text-gray-700 hover:border-red-300 dark:border-red-500/40 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-red-400/60'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-dark-500',
             ]"
-            data-testid="quick-amount-credited"
-          >{{ secondLine(amt) }}</span>
-        </button>
+            :aria-pressed="modelValue === amt"
+            :data-testid="`quick-amount-${amt}`"
+            @click="selectAmount(amt)"
+          >
+            <!-- 促销价签（单行）：仅命中档位的金额显示；红底白字、内圈点线、右侧圆孔、整体旋转 -->
+            <span
+              v-if="quoteFor(amt).percent > 0"
+              class="pointer-events-none absolute -right-2 -top-3 z-10 rotate-12"
+              data-testid="quick-amount-bonus-badge"
+            >
+              <span
+                class="relative flex items-center gap-1 whitespace-nowrap rounded bg-red-600 py-0.5 pl-1.5 pr-1 text-[11px] font-extrabold leading-tight tracking-tight text-white shadow-md ring-2 ring-white before:pointer-events-none before:absolute before:inset-[2px] before:rounded-sm before:border before:border-dotted before:border-white/70 dark:bg-red-500 dark:ring-dark-800"
+              >
+                <span>{{ badgeText(amt) }}</span>
+                <span class="h-1 w-1 shrink-0 rounded-full bg-white"></span>
+              </span>
+            </span>
+            <span class="block">{{ amt }}</span>
+            <!-- 配置了优惠阶梯时，所有按钮都显示第二行，保持高度一致：赠金显示到账 USD，折扣显示折后实付 -->
+            <span
+              v-if="bonusTiers.length > 0"
+              :class="[
+                'mt-0.5 block text-[11px] font-normal leading-tight',
+                quoteFor(amt).percent > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-400 dark:text-gray-500',
+              ]"
+              data-testid="quick-amount-credited"
+            >{{ secondLine(amt) }}</span>
+          </button>
+        </template>
       </div>
     </div>
 
     <!-- Custom Amount Input -->
     <div>
-      <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label v-if="!inline" :for="inputId" class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
         {{ t('payment.customAmount') }}
       </label>
-      <div class="relative">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-500">
-          $
+      <HeroPaymentControl
+        v-if="inline"
+        :amount="customText"
+        :label="t('payment.customAmount') + ' (' + paymentCurrency + ')'"
+        :currency="paymentCurrency"
+        :placeholder="placeholderText"
+        :error="error"
+        @input="updateAmount"
+      />
+      <div v-else class="relative">
+        <span aria-hidden="true" class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-gray-600 dark:text-gray-300">
+          {{ currencySymbol(currency) }}
         </span>
         <input
+          :id="inputId"
+          :aria-invalid="Boolean(error)"
+          :aria-describedby="error ? inputId + '-error' : undefined"
+          :aria-label="t('payment.customAmount')"
           type="text"
           inputmode="decimal"
           :value="customText"
           :placeholder="placeholderText"
-          class="input w-full py-3 pl-8 pr-4"
+          class="input min-h-12 w-full py-3 pl-3 pr-16 text-base tabular-nums"
           @input="handleInput"
         />
       </div>
+      <p v-if="error && !inline" :id="inputId + '-error'" role="alert" class="mt-2 text-sm text-red-700 dark:text-red-300">{{ error }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, defineAsyncComponent, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { RechargeBonusTier } from '@/types/payment'
 import { formatRechargeBonusNumber, quoteRechargeBonus, type RechargeBonusMode } from '@/utils/rechargeBonus'
-import { formatPaymentAmount } from './currency'
+import { currencySymbol, formatPaymentAmount, normalizePaymentCurrency } from './currency'
 
 const props = withDefaults(defineProps<{
+  inline?: boolean
+  error?: string
   amounts?: number[]
   modelValue: number | null
   min?: number
@@ -104,16 +132,18 @@ const emit = defineEmits<{
   'update:modelValue': [value: number | null]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const amountNumber = computed(() => new Intl.NumberFormat(locale?.value, { maximumFractionDigits: 2 }))
+const paymentCurrency = computed(() => normalizePaymentCurrency(props.currency))
 
+const HeroPaymentControl = defineAsyncComponent(() => import('@/components/assistant/HeroPaymentControl.vue'))
+const inputId = useId()
 const customText = ref('')
 
 // 0 = no limit
 const filteredAmounts = computed(() =>
   props.amounts.filter((a) => (props.min <= 0 || a >= props.min) && (props.max <= 0 || a <= props.max))
 )
-
-const showSecondLine = computed(() => props.bonusTiers.length > 0)
 
 function currencyDigits(): number {
   if (!props.currency) return 2
@@ -141,9 +171,9 @@ function badgeText(amt: number): string {
 function secondLine(amt: number): string {
   const quote = quoteFor(amt)
   if (props.bonusMode === 'discount') {
-    return t('payment.rechargeBonus.payShort', { amount: formatPaymentAmount(quote.payBase, props.currency) })
+    return t('payment.rechargeBonus.payShort', { amount: formatPaymentAmount(quote.payBase, paymentCurrency.value, locale?.value, props.inline ? 'code' : 'narrowSymbol') })
   }
-  return t('payment.rechargeBonus.creditedShort', { amount: '$' + quote.credited.toFixed(2) })
+  return t('payment.rechargeBonus.creditedShort', { amount: props.inline ? formatPaymentAmount(quote.credited, 'USD', locale?.value, 'code') : '$' + quote.credited.toFixed(2) })
 }
 
 const placeholderText = computed(() => {
@@ -167,6 +197,11 @@ function handleInput(e: Event) {
     input.value = customText.value
     return
   }
+  updateAmount(val)
+}
+
+function updateAmount(val: string) {
+  if (!AMOUNT_PATTERN.test(val)) return
   customText.value = val
   if (val === '') {
     emit('update:modelValue', null)

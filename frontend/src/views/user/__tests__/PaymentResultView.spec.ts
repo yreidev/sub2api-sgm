@@ -10,6 +10,7 @@ const pollOrderStatus = vi.hoisted(() => vi.fn())
 const verifyOrder = vi.hoisted(() => vi.fn())
 const verifyOrderPublic = vi.hoisted(() => vi.fn())
 const resolveOrderPublicByResumeToken = vi.hoisted(() => vi.fn())
+const session = vi.hoisted(() => ({ isAuthenticated: false, isAdmin: false, user: { id: 9 } }))
 const refreshUser = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-router', async () => {
@@ -40,6 +41,7 @@ vi.mock('@/stores/payment', () => ({
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
     refreshUser,
+    ...session,
   }),
 }))
 
@@ -52,7 +54,7 @@ vi.mock('@/api/payment', () => ({
 }))
 
 import PaymentResultView from '../PaymentResultView.vue'
-import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
+import { assistantPaymentStorageKey, PAYMENT_RECOVERY_STORAGE_KEY } from '@/components/payment/paymentFlow'
 import { formatPaymentAmount } from '@/components/payment/currency'
 
 const orderFactory = (status: string) => ({
@@ -93,6 +95,9 @@ const recoverySnapshotFactory = (resumeToken: string) => ({
 describe('PaymentResultView', () => {
   beforeEach(() => {
     routeState.query = {}
+    session.isAuthenticated = false
+    session.isAdmin = false
+    session.user.id = 9
     routerPush.mockReset()
     pollOrderStatus.mockReset()
     verifyOrder.mockReset()
@@ -105,6 +110,108 @@ describe('PaymentResultView', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it.each([false, true])('offers the correct destination after snapshot cleanup (admin=%s)', async (admin) => {
+    session.isAuthenticated = true
+    session.isAdmin = admin
+    routeState.query = { order_id: '42' }
+    pollOrderStatus.mockResolvedValue(orderFactory('COMPLETED'))
+    const view = mount(PaymentResultView)
+    await flushPromises()
+    expect(view.text().includes('dashboard.assistantSetup.backHome')).toBe(!admin)
+    expect(view.text().includes('payment.result.viewOrders')).toBe(admin)
+    view.unmount()
+  })
+
+  it('keeps the admin preview destination across cleanup and refresh, scoped to account and order', async () => {
+    session.isAdmin = session.isAuthenticated = true
+    const key = assistantPaymentStorageKey(9)
+    localStorage.setItem(key, JSON.stringify(recoverySnapshotFactory('preview-token')))
+    routeState.query = { resume_token: 'preview-token' }
+    resolveOrderPublicByResumeToken.mockResolvedValue({ data: orderFactory('COMPLETED') })
+    const completed = mount(PaymentResultView)
+    await flushPromises()
+    expect(localStorage.getItem(key)).toBeNull()
+    completed.unmount()
+
+    const newer = JSON.stringify({ ...recoverySnapshotFactory('new-token'), orderId: 99, outTradeNo: 'new-order' })
+    localStorage.setItem(key, newer)
+    const refresh = mount(PaymentResultView)
+    await flushPromises()
+    await refresh.get('button').trigger('click')
+    expect(routerPush).toHaveBeenCalledWith({ path: '/dashboard', query: { view: 'simple', recharge: undefined } })
+    expect(localStorage.getItem(key)).toBe(newer)
+    refresh.unmount()
+
+    routeState.query = { out_trade_no: orderFactory('').out_trade_no, trade_status: 'TRADE_SUCCESS' }
+    verifyOrder.mockRejectedValueOnce(new Error('authenticated verification unavailable'))
+    verifyOrderPublic.mockResolvedValueOnce({ data: { out_trade_no: routeState.query.out_trade_no, status: 'REFUNDED' } })
+    const refunded = mount(PaymentResultView)
+    await flushPromises()
+    expect(refunded.text()).toContain('payment.status.refunded')
+    expect(refunded.text()).toContain('dashboard.assistantSetup.backHome')
+    expect(refunded.text()).not.toContain('payment.result.failed')
+    expect(localStorage.getItem(key)).toBe(newer)
+    refunded.unmount()
+
+    session.user.id = 10
+    routeState.query = { resume_token: 'preview-token' }
+    const otherAccount = mount(PaymentResultView)
+    await flushPromises()
+    expect(otherAccount.text()).toContain('payment.result.viewOrders')
+    otherAccount.unmount()
+
+    session.user.id = 9
+    routeState.query = { order_id: '83' }
+    pollOrderStatus.mockResolvedValue({ ...orderFactory('COMPLETED'), id: 83, out_trade_no: 'standard-order' })
+    const otherOrder = mount(PaymentResultView)
+    await flushPromises()
+    expect(otherOrder.text()).toContain('payment.result.viewOrders')
+    expect(localStorage.getItem(key)).toBe(newer)
+    otherOrder.unmount()
+  })
+
+  it.each([assistantPaymentStorageKey(9), PAYMENT_RECOVERY_STORAGE_KEY])(
+    'retains a charged order until fulfillment succeeds (%s)', async (key) => {
+      vi.useFakeTimers()
+      routeState.query = { order_id: '42', resume_token: 'sample-token' }
+      localStorage.setItem(key, JSON.stringify(recoverySnapshotFactory('sample-token')))
+      resolveOrderPublicByResumeToken
+        .mockResolvedValueOnce({ data: { ...orderFactory('FAILED'), paid_at: '2026-04-20T12:01:00Z' } })
+        .mockResolvedValueOnce({ data: orderFactory('RECHARGING') })
+        .mockResolvedValueOnce({ data: orderFactory('COMPLETED') })
+      const view = mount(PaymentResultView)
+      await flushPromises()
+      expect(view.text()).toContain('payment.result.creditFailedHint')
+      expect(view.text()).not.toContain('payment.result.failed')
+      expect(view.text()).not.toContain('payment.result.backToRecharge')
+      expect(localStorage.getItem(key)).not.toBeNull()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(view.text()).toContain('payment.result.processing')
+      expect(localStorage.getItem(key)).not.toBeNull()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(view.text()).toContain('payment.result.success')
+      expect(localStorage.getItem(key)).toBeNull()
+      view.unmount()
+    })
+
+  it('returns an interrupted assistant payment to the same page and retains its selected amount', async () => {
+    const key = assistantPaymentStorageKey(9)
+    routeState.query = { out_trade_no: 'sub2_20260420abcd1234' }
+    window.localStorage.setItem(key, JSON.stringify({ ...recoverySnapshotFactory(''), requestedAmount: 50 }))
+    pollOrderStatus.mockResolvedValue(orderFactory('FAILED'))
+
+    const wrapper = mount(PaymentResultView)
+    await flushPromises()
+
+    const home = wrapper.findAll('button').find(button => button.text() === 'dashboard.assistantSetup.backHome')
+    expect(home).toBeDefined()
+    await home!.trigger('click')
+    expect(routerPush).toHaveBeenCalledWith({ path: '/dashboard', query: { view: 'simple', recharge: '1' } })
+    expect(window.localStorage.getItem(key)).toContain('"requestedAmount":50')
+    expect(refreshUser).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('renders a pending state instead of a failure state when the restored order is still pending', async () => {
@@ -304,7 +411,7 @@ describe('PaymentResultView', () => {
     expect(pollOrderStatus).toHaveBeenCalledWith(77)
     expect(verifyOrderPublic).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('payment.result.success')
-    expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toBeNull()
+    expect(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY)).toContain('"orderId":42')
   })
 
   it('falls back to public out_trade_no verification when resume_token recovery fails in legacy return flows', async () => {
@@ -442,6 +549,9 @@ describe('PaymentResultView', () => {
     expect(verifyOrder).toHaveBeenCalledWith('auth-verify-123')
     expect(verifyOrderPublic).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('payment.result.success')
+    expect(wrapper.findAll('button').map(button => button.text())).toEqual([
+      'payment.result.backToRecharge', 'payment.result.viewOrders',
+    ])
   })
 
   it('does not use public out_trade_no verification for bare order numbers without legacy return markers', async () => {
