@@ -315,7 +315,7 @@ export default {
       "category": "Monitoring"
     },
     "system_dread": {
-      "label": "Read current and available system versions",
+      "label": "Read the current system version",
       "category": "System"
     }
   },

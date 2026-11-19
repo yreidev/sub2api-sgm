@@ -286,12 +286,7 @@ The Setup Wizard will guide you through:
 
 #### Upgrade
 
-You can upgrade directly from the **Admin Dashboard** by clicking the **Check for Updates** button in the top-left corner.
-
-The web interface will:
-- Check for new versions automatically
-- Download and apply updates with one click
-- Support rollback if needed
+For a systemd installation, stop the service, replace the executable with a build of the desired SGM revision, and start the service. SGM publishes its server and embedded frontend together as `ghcr.io/yreidev/sub2api-sgm`. For a container deployment, pull the desired image tag and recreate the application container.
 
 #### Useful Commands
 

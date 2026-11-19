@@ -155,9 +155,9 @@ services:
       - SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS=${SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS:-}
 
       # =======================================================================
-      # Update Configuration (在线更新配置)
+      # Remote metadata (远程元数据)
       # =======================================================================
-      # Proxy for accessing GitHub (online updates + pricing data)
+      # Proxy for accessing GitHub (client version metadata + pricing data)
       # Examples: http://host:port, socks5://host:port
       - UPDATE_PROXY_URL=${UPDATE_PROXY_URL:-}
 

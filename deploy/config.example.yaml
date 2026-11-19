@@ -1306,11 +1306,11 @@ gemini:
         cooldown_minutes: 5
 
 # =============================================================================
-# Update Configuration (在线更新配置)
+# Remote metadata (远程元数据)
 # =============================================================================
 update:
-  # Proxy URL for accessing GitHub (used for online updates and pricing data)
-  # 用于访问 GitHub 的代理地址（用于在线更新和定价数据获取）
+  # Proxy URL for accessing GitHub (used for client version metadata and pricing data)
+  # 用于访问 GitHub 的代理地址（用于客户端版本同步和定价数据获取）
   # Supports: http, https, socks5, socks5h
   # Examples:
   #   - HTTP proxy: "http://127.0.0.1:7890"
