@@ -196,10 +196,12 @@ func responsesItemWire(item *ResponsesOutput) map[string]any {
 		m["name"] = item.Name
 		m["input"] = item.Input
 	case "tool_search_call":
-		// tool_search 调用还原项：execution 必须为 "client"（否则 codex 忽略该
-		// 调用），arguments 在线上是 JSON 对象而非字符串。
-		m["call_id"] = item.CallID
-		m["execution"] = "client"
+		if item.CallID != "" {
+			m["call_id"] = item.CallID
+		}
+		if item.Execution != "" {
+			m["execution"] = item.Execution
+		}
 		m["arguments"] = toolSearchCallArgumentsJSON(item.Arguments)
 	}
 	return m

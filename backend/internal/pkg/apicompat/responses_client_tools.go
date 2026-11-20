@@ -590,6 +590,7 @@ func (r *ResponsesClientToolStreamRestorer) Restore(event ResponsesStreamEvent) 
 				event.Item.Namespace = ""
 			} else {
 				event.Item.Type = "tool_search_call"
+				event.Item.Execution = "client"
 				event.Item.Name = ""
 				event.Item.Arguments = "{}"
 				event.Item.Namespace = ""
@@ -630,6 +631,7 @@ func (r *ResponsesClientToolStreamRestorer) Restore(event ResponsesStreamEvent) 
 				event.Item.Namespace = ""
 			} else {
 				event.Item.Type = "tool_search_call"
+				event.Item.Execution = "client"
 				event.Item.Name = ""
 				event.Item.Arguments = call.arguments.String()
 				if strings.TrimSpace(event.Item.Arguments) == "" {
@@ -872,6 +874,7 @@ func restoreResponsesOutputClientTools(outputs []ResponsesOutput, adapter *Respo
 			output.Namespace = ""
 		} else if adapter.ToolSearch && output.Name == toolSearchProxyName {
 			output.Type = "tool_search_call"
+			output.Execution = "client"
 			output.ID = retypedResponsesToolCallItemID(output.ID, output.Type)
 			output.Name = ""
 			output.Namespace = ""

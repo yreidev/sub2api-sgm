@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -538,7 +539,7 @@ func TestGetAvailableModels_UsesShortCacheAndSupportsInvalidation(t *testing.T) 
 	require.Equal(t, int64(1), repo.listByGroupCalls.Load())
 
 	// TTL 内再次请求应命中缓存，不回源。
-	models2 := svc.GetAvailableModels(context.Background(), &groupID, PlatformAnthropic)
+	models2 := svc.AnthropicListingModels(context.Background(), &Group{ID: groupID, Platform: PlatformAnthropic})
 	require.Equal(t, models1, models2)
 	require.Equal(t, int64(1), repo.listByGroupCalls.Load())
 
@@ -952,4 +953,28 @@ func TestSelectAccountWithLoadAwareness_StickyReadReuse(t *testing.T) {
 		require.Equal(t, account.ID, result.Account.ID)
 		require.Equal(t, int64(1), cache.getCalls.Load())
 	})
+}
+
+func BenchmarkAnthropicLongContextCatalog(b *testing.B) {
+	for _, size := range []int{100, 1000} {
+		models := make([]string, size)
+		mapping := make(map[string]any, size)
+		metadata := make(map[string]UpstreamModelMetadata, size)
+		for i := range models {
+			model := fmt.Sprintf("model-%d", i)
+			models[i] = model
+			mapping[model] = model
+			metadata[model] = UpstreamModelMetadata{ContextWindow: 1_000_000}
+		}
+		account := Account{ID: 1, Platform: PlatformAnthropic, Type: AccountTypeAPIKey, Credentials: map[string]any{"model_mapping": mapping}}
+		account.SetUpstreamModelMetadataSnapshot(UpstreamModelMetadataSnapshot{Models: metadata})
+		b.Run(fmt.Sprint(size), func(b *testing.B) {
+			s := GatewayService{}
+			accounts := []Account{account}
+			b.ReportAllocs()
+			for b.Loop() {
+				s.anthropicLongContextCandidates(accounts, models)
+			}
+		})
+	}
 }

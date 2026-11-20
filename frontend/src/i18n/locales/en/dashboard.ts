@@ -744,6 +744,7 @@ export default {
       scrollHint: 'Scroll horizontally to see all prices.',
       groupPrices: 'Pricing for {group}',
       model: 'Model',
+      copyModelId: 'Copy model ID {model}',
       input: 'Input',
       output: 'Output',
       cache: 'Cache',

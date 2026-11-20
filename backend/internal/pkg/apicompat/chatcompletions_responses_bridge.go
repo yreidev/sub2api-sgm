@@ -61,6 +61,7 @@ func ResponsesToChatCompletionsRequestWithOptions(req *ResponsesRequest, opts *R
 		Stream:              req.Stream,
 		ServiceTier:         req.ServiceTier,
 		ParallelToolCalls:   req.ParallelToolCalls,
+		Stop:                req.Stop,
 	}
 	if req.Reasoning != nil {
 		out.ReasoningEffort = req.Reasoning.Effort
@@ -1444,6 +1445,7 @@ func chatMessageToResponsesOutput(message ChatMessage, customTools, functionTool
 		if toolSearch && toolCall.Function.Name == toolSearchProxyName {
 			outputs = append(outputs, ResponsesOutput{
 				Type:      "tool_search_call",
+				Execution: "client",
 				ID:        generateItemID(),
 				CallID:    toolCall.ID,
 				Arguments: arguments,
@@ -2128,6 +2130,7 @@ func closeChatToolItems(state *ChatCompletionsToResponsesStreamState) []Response
 				OutputIndex: outputIndex,
 				Item: &ResponsesOutput{
 					Type:      "tool_search_call",
+					Execution: "client",
 					ID:        itemID,
 					CallID:    toolCall.ID,
 					Arguments: arguments,
@@ -2213,6 +2216,7 @@ func (state *ChatCompletionsToResponsesStreamState) chatOutput() []ResponsesOutp
 		if state.toolIsToolSearch[i] {
 			outputs = append(outputs, ResponsesOutput{
 				Type:      "tool_search_call",
+				Execution: "client",
 				ID:        generateItemID(),
 				CallID:    toolCall.ID,
 				Arguments: arguments,

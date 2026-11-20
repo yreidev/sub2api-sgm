@@ -62,7 +62,18 @@
           <!-- 模型名 + 非 token 计费模式徽章;分时时段行额外标注时段 -->
           <td :class="table.cell()" data-slot="table-cell" class="border-r border-gray-100 py-2.5 pl-5 pr-4 align-middle dark:border-dark-700/60">
             <div class="flex flex-wrap items-center gap-1.5">
-              <span class="model-name">{{ m.name }}</span>
+              <span class="inline-flex min-w-0 items-center gap-1">
+                <span class="model-name min-w-0">{{ m.name }}</span>
+                <HeroButton
+                  icon-only
+                  size="sm"
+                  :title="t('modelPlaza.table.copyModelId', { model: m.name })"
+                  :aria-label="t('modelPlaza.table.copyModelId', { model: m.name })"
+                  @press="copyToClipboard(m.name)"
+                >
+                  <Icon name="copy" size="sm" aria-hidden="true" />
+                </HeroButton>
+              </span>
               <!-- 时段徽章紧跟模型名,其余徽章排在后面,空间不足时先换行的是它们 -->
               <span
                 v-if="period"
@@ -316,8 +327,11 @@ import { tableVariants } from '@heroui/styles'
 import { computed, shallowRef } from 'vue'
 import { createElement } from 'react'
 import { Table } from '@heroui/react'
+import HeroButton from '@/components/hero/HeroButton.vue'
 import { useReactHost } from '@/components/hero/useReactHost'
 import { useI18n } from 'vue-i18n'
+import Icon from '@/components/icons/Icon.vue'
+import { useClipboard } from '@/composables/useClipboard'
 import { formatScaled, resolveIntervalPrices } from '@/utils/pricing'
 import { platformBadgeLightClass, platformLabel } from '@/utils/platformColors'
 import {
@@ -364,6 +378,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const { copyToClipboard } = useClipboard()
 // Native merged cells preserve grouped headers and the per-request price spanning three columns.
 const table = tableVariants({ variant: 'secondary' })
 const scrollArea = shallowRef<HTMLDivElement | null>(null)

@@ -749,6 +749,7 @@ export default {
       scrollHint: '左右滑动可查看完整价格表。',
       groupPrices: '{group} 分组价格表',
       model: '模型',
+      copyModelId: '复制模型 ID {model}',
       input: '输入',
       output: '输出',
       cache: '缓存',

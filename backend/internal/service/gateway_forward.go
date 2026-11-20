@@ -313,36 +313,7 @@ func (s *GatewayService) Forward(ctx context.Context, c *gin.Context, account *A
 		return nil, err
 	}
 
-	// 应用模型映射：
-	// - APIKey 账号：使用账号级别的显式映射（如果配置），否则透传原始模型名
-	// - OAuth/SetupToken 账号：使用 Anthropic 标准映射（短ID → 长ID）
-	mappedModel := reqModel
-	mappingSource := ""
-	if account.Type == AccountTypeAPIKey {
-		mappedModel = account.GetMappedModel(reqModel)
-		if mappedModel != reqModel {
-			mappingSource = "account"
-		}
-	}
-	if mappingSource == "" && account.Platform == PlatformAnthropic && account.Type == AccountTypeServiceAccount {
-		if candidate, matched := account.ResolveMappedModel(reqModel); matched {
-			mappedModel = candidate
-			mappingSource = "account"
-		} else {
-			normalized := normalizeVertexAnthropicModelID(claude.NormalizeModelID(reqModel))
-			if normalized != reqModel {
-				mappedModel = normalized
-				mappingSource = "vertex"
-			}
-		}
-	}
-	if mappingSource == "" && account.Platform == PlatformAnthropic && account.Type != AccountTypeAPIKey {
-		normalized := claude.NormalizeModelID(reqModel)
-		if normalized != reqModel {
-			mappedModel = normalized
-			mappingSource = "prefix"
-		}
-	}
+	mappedModel, mappingSource := anthropicForwardModel(account, reqModel)
 	if mappedModel != reqModel {
 		// 替换请求体中的模型名
 		if err := replaceBody(s.replaceModelInBody(body, mappedModel)); err != nil {
@@ -1023,6 +994,41 @@ func (s *GatewayService) isUpstreamModelRestrictedByChannel(ctx context.Context,
 		return false
 	}
 	return s.channelService.IsModelRestricted(ctx, groupID, upstreamModel)
+}
+
+// anthropicForwardModel resolves the model used for standard Messages forwarding and catalog metadata.
+func anthropicForwardModel(account *Account, reqModel string) (string, string) {
+	// 应用模型映射：
+	// - APIKey 账号：使用账号级别的显式映射（如果配置），否则透传原始模型名
+	// - OAuth/SetupToken 账号：使用 Anthropic 标准映射（短ID → 长ID）
+	mappedModel := reqModel
+	mappingSource := ""
+	if account.Type == AccountTypeAPIKey {
+		mappedModel = account.GetMappedModel(reqModel)
+		if mappedModel != reqModel {
+			mappingSource = "account"
+		}
+	}
+	if mappingSource == "" && account.Platform == PlatformAnthropic && account.Type == AccountTypeServiceAccount {
+		if candidate, matched := account.ResolveMappedModel(reqModel); matched {
+			mappedModel = candidate
+			mappingSource = "account"
+		} else {
+			normalized := normalizeVertexAnthropicModelID(claude.NormalizeModelID(reqModel))
+			if normalized != reqModel {
+				mappedModel = normalized
+				mappingSource = "vertex"
+			}
+		}
+	}
+	if mappingSource == "" && account.Platform == PlatformAnthropic && account.Type != AccountTypeAPIKey {
+		normalized := claude.NormalizeModelID(reqModel)
+		if normalized != reqModel {
+			mappedModel = normalized
+			mappingSource = "prefix"
+		}
+	}
+	return mappedModel, mappingSource
 }
 
 // resolveAccountUpstreamModel 确定账号将请求模型映射为什么上游模型。

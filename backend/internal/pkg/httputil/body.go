@@ -71,6 +71,12 @@ func ReadRequestBodyWithPrealloc(req *http.Request) ([]byte, error) {
 	return body.data, err
 }
 
+// ReadRequestBodyPart buffers a decoded multipart field within the caller's ingress memory scope.
+func ReadRequestBodyPart(ctx context.Context, reader io.Reader) ([]byte, error) {
+	part, err := readRequestBodyChunksWithBudget(ctx, reader, requestBodyReadInitCap, -1)
+	return part.data, err
+}
+
 // requestBodyBuffer carries only allocations owned by the current helper.
 // Borrowed input (notably PrereadBody) has no charge to release: its original
 // owner may still retain it even if normalization creates a replacement.

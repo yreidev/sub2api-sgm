@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1477,12 +1478,21 @@ func mixedListingModelAllowed(groupPlatform, model string) bool {
 }
 
 func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64, platform string) []string {
+	return slices.Clone(s.availableModelCatalog(ctx, groupID, platform).models)
+}
+
+type availableModelCatalog struct {
+	models      []string
+	longContext map[string][]int64 // base model -> candidates, only if every candidate supports 1m
+}
+
+func (s *GatewayService) availableModelCatalog(ctx context.Context, groupID *int64, platform string) availableModelCatalog {
 	cacheKey := modelsListCacheKey(groupID, platform)
 	if s.modelsListCache != nil {
 		if cached, found := s.modelsListCache.Get(cacheKey); found {
-			if models, ok := cached.([]string); ok {
+			if models, ok := cached.(availableModelCatalog); ok {
 				modelsListCacheHitTotal.Add(1)
-				return cloneStringSlice(models)
+				return models
 			}
 		}
 	}
@@ -1498,9 +1508,10 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	}
 
 	if err != nil || len(accounts) == 0 {
-		return nil
+		return availableModelCatalog{}
 	}
 
+	candidates := accounts
 	// Filter by platform if specified. Mixed scheduling (a gemini group routing
 	// to antigravity accounts) is honoured here as well, so the advertised list
 	// stays in sync with what the request path can actually serve.
@@ -1545,39 +1556,38 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	if !hasAnyMapping && platform == PlatformOpenAI {
 		models := filterRetiredOpenAIModelIDs(accounts, openai.DefaultModelIDs())
 		if len(models) != len(openai.DefaultModels) {
-			return models
+			return availableModelCatalog{models: models}
 		}
 	}
-	if !hasAnyMapping {
-		if s.modelsListCache != nil {
-			s.modelsListCache.Set(cacheKey, []string(nil), s.modelsListCacheTTL)
-			modelsListCacheStoreTotal.Add(1)
-		}
-		return nil
-	}
-
 	// Convert to slice
-	models := make([]string, 0, len(modelSet))
+	var models []string
+	if hasAnyMapping {
+		models = make([]string, 0, len(modelSet))
+	}
 	for model := range modelSet {
 		models = append(models, model)
 	}
 	sort.Strings(models)
 
-	if platform == PlatformOpenAI {
+	if hasAnyMapping && platform == PlatformOpenAI {
 		models = supplementUnmappedOpenAIModels(accounts, models)
 		models = filterRetiredOpenAIModelIDs(accounts, models)
 		// nil means "use defaults" to listing callers; an empty filtered catalog
 		// must remain authoritative instead of resurrecting retired defaults.
 		if len(models) == 0 {
-			return models
+			return availableModelCatalog{models: models}
 		}
 	}
 
+	catalog := availableModelCatalog{models: models}
+	if platform == PlatformAnthropic {
+		catalog.longContext = s.anthropicLongContextCandidates(candidates, models)
+	}
 	if s.modelsListCache != nil {
-		s.modelsListCache.Set(cacheKey, cloneStringSlice(models), s.modelsListCacheTTL)
+		s.modelsListCache.Set(cacheKey, catalog, s.modelsListCacheTTL)
 		modelsListCacheStoreTotal.Add(1)
 	}
-	return cloneStringSlice(models)
+	return catalog
 }
 
 func (s *GatewayService) resolveCompositeModelOwnership(ctx context.Context, groupID int64, model string) (CompositeModelOwnership, error) {
