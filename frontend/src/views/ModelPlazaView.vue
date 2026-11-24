@@ -3,9 +3,9 @@
     <template v-if="!isEmbedded" #navigation>
       <HeroLink
         class="plaza-account-link"
-        :to="authStore.isAdmin ? '/admin/dashboard' : { path: '/login', query: { redirect: '/model-plaza' } }"
+        :to="authStore.isAdmin ? '/admin/dashboard' : authStore.isAuthenticated ? '/dashboard' : { path: '/login', query: { redirect: '/model-plaza' } }"
       >
-        {{ t(authStore.isAdmin ? 'modelPlaza.nav.backToDashboard' : 'modelPlaza.nav.login') }}
+        {{ t(authStore.isAuthenticated ? 'modelPlaza.nav.backToDashboard' : 'modelPlaza.nav.login') }}
       </HeroLink>
     </template>
     <ModelPlazaContent
@@ -54,12 +54,40 @@ onMounted(loadPlaza)
 .plaza-account-link {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 44px;
   border-radius: 10px;
-  padding-inline: 1.1rem;
+  padding-inline: 1.125rem;
   background: var(--accent);
   color: var(--on-accent);
+  font-size: .9375rem;
   font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: var(--shadow-btn-primary, 0 1px 2px rgb(18 69 79 / 24%), inset 0 1px 0 rgb(255 255 255 / 16%));
+  transition:
+    background-color var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
-.plaza-account-link:hover { filter: brightness(.93); }
+.plaza-account-link:hover {
+  background: var(--accent-hover, #12454f);
+}
+.plaza-account-link:active {
+  background: var(--accent-active, #0e3840);
+  transform: scale(0.985);
+}
+.plaza-account-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: var(--ring-focus, 0 0 0 3px rgb(18 108 122 / 18%));
+}
+@media (prefers-reduced-motion: reduce) {
+  .plaza-account-link {
+    transition: none;
+  }
+  .plaza-account-link:active {
+    transform: none;
+  }
+}
 </style>

@@ -41,14 +41,14 @@
         type="text"
         inputmode="numeric"
         maxlength="6"
-        class="input min-w-0 flex-1"
+        class="input min-w-0 flex-1 font-mono tabular-nums tracking-[0.2em]"
         placeholder="123456"
         :disabled="isSubmitting"
       />
       <HeroButton variant="secondary"
         :data-testid="`${testIdPrefix}-create-account-send-code`"
         type="button"
-        class="btn btn-secondary shrink-0"
+        class="btn btn-secondary shrink-0 tabular-nums"
         :disabled="isSubmitting || isSendingCode || countdown > 0 || !email.trim() || (turnstileEnabled && !turnstileToken)"
         @press="handleSendCode"
       >
@@ -61,10 +61,10 @@
         }}
       </HeroButton>
     </div>
-    <p v-if="emailVerifyEnabled && sendCodeSuccess" class="text-sm text-green-600 dark:text-green-400">
+    <p v-if="emailVerifyEnabled && sendCodeSuccess" class="text-sm text-emerald-700 dark:text-emerald-400">
       {{ t('auth.codeSentSuccess') }}
     </p>
-    <p v-else-if="emailVerifyEnabled" class="text-xs text-gray-500 dark:text-dark-400">
+    <p v-else-if="emailVerifyEnabled" class="auth-muted text-xs">
       {{ t('auth.verificationCodeHint') }}
     </p>
     <HeroInput
@@ -385,12 +385,24 @@ onUnmounted(() => {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: all 0.3s ease;
+  transition: all var(--duration-base, 220ms) var(--ease-out, ease);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: none;
+  }
 }
 </style>

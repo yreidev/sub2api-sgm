@@ -8,20 +8,20 @@
         </h1>
         <p v-if="hasRegisterData" class="auth-intro">
           {{ t('auth.sendCodeDesc') }}
-          <span class="font-medium text-gray-700 dark:text-gray-300">{{ email }}</span>
+          <span class="auth-emphasis">{{ email }}</span>
         </p>
       </div>
 
       <!-- No Data Warning -->
       <div
         v-if="!hasRegisterData"
-        class="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20"
+        class="rounded-xl border border-amber-200/90 bg-amber-50/90 p-4 dark:border-amber-500/25 dark:bg-amber-500/10"
       >
         <div class="flex items-start gap-3">
           <div class="flex-shrink-0">
-            <Icon name="exclamationCircle" size="md" class="text-amber-500" />
+            <Icon name="exclamationCircle" size="md" class="text-amber-600 dark:text-amber-400" />
           </div>
-          <div class="text-sm text-amber-700 dark:text-amber-400">
+          <div class="text-sm text-amber-800 dark:text-amber-300">
             <p class="font-medium">{{ t('auth.sessionExpired') }}</p>
             <p class="mt-1">{{ t('auth.sessionExpiredDesc') }}</p>
           </div>
@@ -44,7 +44,7 @@
             inputmode="numeric"
             maxlength="6"
             :disabled="isLoading"
-            class="input py-3 text-center font-mono text-xl tracking-[0.5em]"
+            class="input py-3 text-center font-mono text-xl tabular-nums tracking-[0.45em]"
             :class="{ 'input-error': errors.code }"
             placeholder="000000"
           />
@@ -54,13 +54,13 @@
         <!-- Code Status -->
         <div
           v-if="codeSent"
-          class="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800/50 dark:bg-green-900/20"
+          class="rounded-xl border border-emerald-200/80 bg-emerald-50/90 p-4 dark:border-emerald-500/25 dark:bg-emerald-500/10"
         >
           <div class="flex items-start gap-3">
             <div class="flex-shrink-0">
-              <Icon name="checkCircle" size="md" class="text-green-500" />
+              <Icon name="checkCircle" size="md" class="text-emerald-600 dark:text-emerald-400" />
             </div>
-            <p class="text-sm text-green-700 dark:text-green-400">
+            <p class="text-sm text-emerald-800 dark:text-emerald-300">
               {{ t('auth.codeSentSuccess') }}
             </p>
           </div>
@@ -113,7 +113,8 @@
         >
           <svg
             v-if="isLoading"
-            class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin motion-reduce:animate-none text-current"
+            aria-hidden="true"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -141,7 +142,7 @@
             v-if="countdown > 0"
             type="button"
             disabled
-            class="cursor-not-allowed text-sm text-gray-400 dark:text-dark-500"
+            class="auth-resend-countdown"
           >
             {{ t('auth.resendCountdown', { countdown }) }}
           </HeroButton>
@@ -152,7 +153,7 @@
             :disabled="
               isSendingCode || (turnstileEnabled && showResendTurnstile && !resendTurnstileToken)
             "
-            class="text-sm text-primary-600 transition-colors hover:text-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-400 dark:hover:text-primary-300"
+            class="auth-resend-btn disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span v-if="isSendingCode">{{ t('auth.sendingCode') }}</span>
             <span v-else-if="captchaEnabled && !showResendTurnstile">
@@ -168,7 +169,7 @@
     <template #footer>
       <HeroButton
         @press="handleBack"
-        class="flex items-center gap-2 text-gray-500 transition-colors hover:text-gray-700 dark:text-dark-400 dark:hover:text-gray-300"
+        class="auth-back-btn"
       >
         <Icon name="arrowLeft" size="sm" />
         {{ t('auth.backToRegistration') }}
@@ -798,12 +799,24 @@ function buildRegistrationErrorMessage(error: unknown, fallback: string): string
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: all 0.3s ease;
+  transition: all var(--duration-base, 220ms) var(--ease-out, ease);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: none;
+  }
 }
 </style>

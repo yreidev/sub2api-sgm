@@ -13,13 +13,13 @@
 
       <!-- Invalid Link State -->
       <div v-if="isInvalidLink" class="space-y-6">
-        <div class="rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-800/50 dark:bg-amber-900/20">
+        <div class="rounded-xl border border-amber-200/90 bg-amber-50/90 p-6 dark:border-amber-500/25 dark:bg-amber-500/10">
           <div class="flex flex-col items-center gap-4 text-center">
-            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-800/50">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/80 bg-amber-100/80 dark:border-amber-500/25 dark:bg-amber-500/15">
               <Icon name="exclamationCircle" size="lg" class="text-amber-600 dark:text-amber-400" />
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-amber-800 dark:text-amber-200">
+              <h3 class="text-lg font-semibold text-amber-900 dark:text-amber-200">
                 {{ t('auth.invalidResetLink') }}
               </h3>
               <p class="mt-2 text-sm text-amber-700 dark:text-amber-300">
@@ -32,7 +32,7 @@
         <div class="text-center">
           <HeroLink
             to="/forgot-password"
-            class="inline-flex items-center gap-2 font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+            class="auth-link inline-flex items-center gap-2 font-medium"
           >
             {{ t('auth.requestNewResetLink') }}
           </HeroLink>
@@ -41,16 +41,16 @@
 
       <!-- Success State -->
       <div v-else-if="isSuccess" class="space-y-6">
-        <div class="rounded-xl border border-green-200 bg-green-50 p-6 dark:border-green-800/50 dark:bg-green-900/20">
+        <div class="rounded-xl border border-emerald-200/80 bg-emerald-50/90 p-6 dark:border-emerald-500/25 dark:bg-emerald-500/10">
           <div class="flex flex-col items-center gap-4 text-center">
-            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-800/50">
-              <Icon name="checkCircle" size="lg" class="text-green-600 dark:text-green-400" />
+            <div class="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-200/80 bg-emerald-100/80 dark:border-emerald-500/25 dark:bg-emerald-500/15">
+              <Icon name="checkCircle" size="lg" class="text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-green-800 dark:text-green-200">
+              <h3 class="text-lg font-semibold text-emerald-900 dark:text-emerald-200">
                 {{ t('auth.passwordResetSuccess') }}
               </h3>
-              <p class="mt-2 text-sm text-green-700 dark:text-green-300">
+              <p class="mt-2 text-sm text-emerald-700 dark:text-emerald-300">
                 {{ t('auth.passwordResetSuccessHint') }}
               </p>
             </div>
@@ -77,7 +77,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="mail" size="md" class="auth-input-icon" />
             </div>
             <HeroInput
               id="email"
@@ -85,7 +85,7 @@
               type="email"
               readonly
               disabled
-              class="input pl-11 bg-gray-50 dark:bg-dark-700"
+              class="input pl-11"
             />
           </div>
         </div>
@@ -97,7 +97,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="lock" size="md" class="auth-input-icon" />
             </div>
             <HeroInput
               id="password"
@@ -114,7 +114,7 @@
               type="button"
               :aria-label="t(showPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
               @press="showPassword = !showPassword"
-              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
@@ -129,7 +129,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="lock" size="md" class="auth-input-icon" />
             </div>
             <HeroInput
               id="confirmPassword"
@@ -146,7 +146,7 @@
               type="button"
               :aria-label="t(showConfirmPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
               @press="showConfirmPassword = !showConfirmPassword"
-              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5"
             >
               <Icon v-if="showConfirmPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
@@ -162,7 +162,8 @@
         >
           <svg
             v-if="isLoading"
-            class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin motion-reduce:animate-none text-current"
+            aria-hidden="true"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -188,11 +189,11 @@
 
     <!-- Footer -->
     <template #footer>
-      <p class="text-gray-500 dark:text-dark-400">
+      <p class="auth-footer-text">
         {{ t('auth.rememberedPassword') }}
         <HeroLink
           to="/login"
-          class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          class="auth-link font-medium"
         >
           {{ t('auth.signIn') }}
         </HeroLink>
@@ -340,12 +341,24 @@ async function handleSubmit(): Promise<void> {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: all 0.3s ease;
+  transition: all var(--duration-base, 220ms) var(--ease-out, ease);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: none;
+  }
 }
 </style>

@@ -21,12 +21,12 @@
             v-else
             type="button"
             :class="[
-              'relative min-w-0 rounded-lg border-2 px-3 py-3 text-center font-medium transition-colors',
+              'relative min-w-0 rounded-xl border px-3 py-3 text-center font-medium transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:focus-visible:outline-primary-400 active:scale-[0.985] motion-reduce:transition-none motion-reduce:active:scale-100',
               modelValue === amt
-                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:border-primary-400 dark:bg-primary-900/40 dark:text-primary-300'
+                ? 'border-primary-500 bg-primary-50/85 text-primary-800 shadow-sm ring-1 ring-inset ring-primary-500 dark:border-primary-400 dark:bg-primary-900/35 dark:text-primary-200 dark:ring-primary-400/70'
                 : quoteFor(amt).percent > 0
-                  ? 'border-red-200 bg-white text-gray-700 hover:border-red-300 dark:border-red-500/40 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-red-400/60'
-                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-dark-500',
+                  ? 'border-red-200/90 bg-white text-gray-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-red-300 hover:bg-red-50/30 dark:border-red-500/35 dark:bg-dark-800/80 dark:text-gray-100 dark:hover:border-red-400/60 dark:hover:bg-dark-700/80'
+                  : 'border-gray-200/90 bg-white text-gray-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-gray-300 hover:bg-gray-50/70 dark:border-dark-600 dark:bg-dark-800/80 dark:text-gray-100 dark:hover:border-dark-500 dark:hover:bg-dark-700/80',
             ]"
             :aria-pressed="modelValue === amt"
             :data-testid="`quick-amount-${amt}`"
@@ -39,19 +39,19 @@
               data-testid="quick-amount-bonus-badge"
             >
               <span
-                class="relative flex items-center gap-1 whitespace-nowrap rounded bg-red-600 py-0.5 pl-1.5 pr-1 text-[11px] font-extrabold leading-tight tracking-tight text-white shadow-md ring-2 ring-white before:pointer-events-none before:absolute before:inset-[2px] before:rounded-sm before:border before:border-dotted before:border-white/70 dark:bg-red-500 dark:ring-dark-800"
+                class="relative flex items-center gap-1 whitespace-nowrap rounded bg-red-600 py-0.5 pl-1.5 pr-1 text-[11px] font-extrabold leading-tight tracking-tight text-white tabular-nums shadow-md ring-2 ring-white before:pointer-events-none before:absolute before:inset-[2px] before:rounded-sm before:border before:border-dotted before:border-white/70 dark:ring-dark-800"
               >
                 <span>{{ badgeText(amt) }}</span>
                 <span class="h-1 w-1 shrink-0 rounded-full bg-white"></span>
               </span>
             </span>
-            <span class="block">{{ amt }}</span>
+            <span class="block text-base font-semibold tabular-nums">{{ amt }}</span>
             <!-- 配置了优惠阶梯时，所有按钮都显示第二行，保持高度一致：赠金显示到账 USD，折扣显示折后实付 -->
             <span
               v-if="bonusTiers.length > 0"
               :class="[
-                'mt-0.5 block text-[11px] font-normal leading-tight',
-                quoteFor(amt).percent > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-400 dark:text-gray-500',
+                'mt-0.5 block text-[11px] font-normal leading-tight tabular-nums',
+                quoteFor(amt).percent > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-500 dark:text-dark-400',
               ]"
               data-testid="quick-amount-credited"
             >{{ secondLine(amt) }}</span>
@@ -75,7 +75,10 @@
         @input="updateAmount"
       />
       <div v-else class="relative">
-        <span aria-hidden="true" class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-gray-600 dark:text-gray-300">
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-gray-500 dark:text-dark-300"
+        >
           {{ currencySymbol(currency) }}
         </span>
         <input
@@ -87,7 +90,10 @@
           inputmode="decimal"
           :value="customText"
           :placeholder="placeholderText"
-          class="input min-h-12 w-full py-3 pl-3 pr-16 text-base tabular-nums"
+          :class="[
+            'input min-h-12 w-full py-3 pl-3.5 pr-16 text-base font-medium tabular-nums shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-gray-300 dark:hover:border-dark-500',
+            error ? 'input-error' : '',
+          ]"
           @input="handleInput"
         />
       </div>

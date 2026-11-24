@@ -29,12 +29,12 @@
       {{ t('auth.linuxdo.signIn') }}
     </HeroButton>
 
-    <div v-if="showDivider" class="flex items-center gap-3">
-      <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-      <span class="text-xs text-gray-500 dark:text-dark-400">
+    <div v-if="showDivider" class="auth-divider flex items-center gap-3">
+      <div class="auth-divider-line h-px flex-1"></div>
+      <span class="auth-divider-label text-xs">
         {{ t('auth.oauthOrContinue') }}
       </span>
-      <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+      <div class="auth-divider-line h-px flex-1"></div>
     </div>
   </div>
 </template>
@@ -72,3 +72,13 @@ function startLogin(): void {
   emit('start', { provider: 'linuxdo', params })
 }
 </script>
+
+<style scoped>
+.auth-divider-line {
+  background: var(--line, #d4e0e2);
+}
+
+.auth-divider-label {
+  color: var(--muted, #4d636b);
+}
+</style>

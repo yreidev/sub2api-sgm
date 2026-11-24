@@ -26,6 +26,8 @@ const appStore = vi.hoisted(() => ({
     payment_enabled?: boolean
     risk_control_enabled?: boolean
     subscription_enabled?: boolean
+    model_plaza_enabled?: boolean
+    model_plaza_require_auth?: boolean
     custom_menu_items?: []
   },
   fetchPublicSettings: vi.fn(),
@@ -115,6 +117,8 @@ describe('feature route guard', () => {
     authStore.isAuthenticated = true
     authStore.isAdmin = true
     authStore.isSimpleMode = false
+    authStore.hasPendingAuthSession = false
+    appStore.backendModeEnabled = false
     appStore.publicSettingsLoaded = false
     appStore.cachedPublicSettings = null
     appStore.fetchPublicSettings.mockReset()
@@ -134,6 +138,7 @@ describe('feature route guard', () => {
 
   it.each([
     ['/dashboard', 'Dashboard', true], ['/oauth/mcp/authorize', 'MCPOAuthAuthorize', true],
+    ['/model-plaza', 'ModelPlaza', false],
     ['/auth/wechat/payment/callback', 'WeChatPaymentOAuthCallback', false], ['/payment/result', 'PaymentResult', false],
     ['/payment/airwallex', 'AirwallexPayment', false], ['/payment/stripe', 'StripePayment', false],
   ])('retains access to %s for regular accounts', async (path, name, requiresAuth) => {
@@ -143,7 +148,7 @@ describe('feature route guard', () => {
     expect(next).toHaveBeenCalledWith()
   })
 
-  it.each([['/home', 'Home'], ['/setup', 'Setup'], ['/key-usage', 'KeyUsage'], ['/model-plaza', 'ModelPlaza']])(
+  it.each([['/home', 'Home'], ['/setup', 'Setup'], ['/key-usage', 'KeyUsage']])(
     'returns signed-in regular accounts to the home from %s', async (path, name) => {
       authStore.isAdmin = false
       const { navigation, next } = runGuard({ requiresAuth: false }, path, name)
@@ -225,8 +230,11 @@ describe('feature route guard', () => {
 
 describe('subscription route guard (opt-out flag)', () => {
   beforeEach(() => {
+    authStore.isAuthenticated = true
     authStore.isAdmin = true
     authStore.isSimpleMode = false
+    authStore.hasPendingAuthSession = false
+    appStore.backendModeEnabled = false
     appStore.publicSettingsLoaded = true
     appStore.fetchPublicSettings.mockReset()
   })
@@ -253,4 +261,112 @@ describe('subscription route guard (opt-out flag)', () => {
 
     expect(next).toHaveBeenCalledWith('/admin/dashboard')
   })
+})
+
+describe('model plaza route guard', () => {
+  beforeEach(() => {
+    authStore.isAuthenticated = false
+    authStore.isAdmin = false
+    authStore.isSimpleMode = false
+    authStore.hasPendingAuthSession = false
+    appStore.backendModeEnabled = false
+    appStore.publicSettingsLoaded = true
+    appStore.cachedPublicSettings = { model_plaza_enabled: true }
+    appStore.fetchPublicSettings.mockReset()
+  })
+
+  it.each([
+    ['/model-plaza', false, false, '/home'],
+    ['/model-plaza/', false, false, '/home'],
+    ['/model-plaza', true, false, '/dashboard'],
+    ['/model-plaza/', true, false, '/dashboard'],
+    ['/model-plaza', true, true, '/admin/dashboard'],
+    ['/model-plaza/', true, true, '/admin/dashboard'],
+  ])(
+    'redirects %s when model_plaza_enabled is false (auth=%s, admin=%s -> %s)',
+    async (path, isAuthenticated, isAdmin, target) => {
+      authStore.isAuthenticated = isAuthenticated
+      authStore.isAdmin = isAdmin
+      appStore.cachedPublicSettings = { model_plaza_enabled: false }
+
+      const { navigation, next } = runGuard({ requiresAuth: false }, path, 'ModelPlaza')
+      await navigation
+
+      expect(next).toHaveBeenCalledOnce()
+      expect(next).toHaveBeenCalledWith(target)
+    }
+  )
+
+  it.each(['/model-plaza', '/model-plaza/'])(
+    'redirects guests on %s to /login with redirect query when model_plaza_require_auth is true',
+    async (path) => {
+      authStore.isAuthenticated = false
+      authStore.isAdmin = false
+      appStore.cachedPublicSettings = {
+        model_plaza_enabled: true,
+        model_plaza_require_auth: true,
+      }
+
+      const { navigation, next } = runGuard({ requiresAuth: false }, path, 'ModelPlaza')
+      await navigation
+
+      expect(next).toHaveBeenCalledOnce()
+      expect(next).toHaveBeenCalledWith({ path: '/login', query: { redirect: path } })
+    }
+  )
+
+  it.each(['/model-plaza', '/model-plaza/'])(
+    'allows signed-in regular users on %s when model_plaza_require_auth is true',
+    async (path) => {
+      authStore.isAuthenticated = true
+      authStore.isAdmin = false
+      appStore.cachedPublicSettings = {
+        model_plaza_enabled: true,
+        model_plaza_require_auth: true,
+      }
+
+      const { navigation, next } = runGuard({ requiresAuth: false }, path, 'ModelPlaza')
+      await navigation
+
+      expect(next).toHaveBeenCalledOnce()
+      expect(next).toHaveBeenCalledWith()
+    }
+  )
+
+  it.each([
+    ['/model-plaza', true],
+    ['/model-plaza/', true],
+    ['/model-plaza', false],
+    ['/model-plaza/', false],
+  ])(
+    'redirects signed-in regular users on %s directly to /login in backend mode (enabled=%s)',
+    async (path, enabled) => {
+      authStore.isAuthenticated = true
+      authStore.isAdmin = false
+      appStore.backendModeEnabled = true
+      appStore.cachedPublicSettings = { model_plaza_enabled: enabled }
+
+      const { navigation, next } = runGuard({ requiresAuth: false }, path, 'ModelPlaza')
+      await navigation
+
+      expect(next).toHaveBeenCalledOnce()
+      expect(next).toHaveBeenCalledWith('/login')
+    }
+  )
+
+  it.each(['/model-plaza', '/model-plaza/'])(
+    'allows admins on %s in backend mode when model plaza is enabled',
+    async (path) => {
+      authStore.isAuthenticated = true
+      authStore.isAdmin = true
+      appStore.backendModeEnabled = true
+      appStore.cachedPublicSettings = { model_plaza_enabled: true }
+
+      const { navigation, next } = runGuard({ requiresAuth: false }, path, 'ModelPlaza')
+      await navigation
+
+      expect(next).toHaveBeenCalledOnce()
+      expect(next).toHaveBeenCalledWith()
+    }
+  )
 })

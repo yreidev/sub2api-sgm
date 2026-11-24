@@ -113,7 +113,7 @@ describe('OAuthCallbackView', () => {
     expect(wrapper.find('input[value="oauth-state"]').exists()).toBe(true)
   })
 
-  it('sends callback errors to toast instead of rendering inline red text', () => {
+  it('sends callback errors to toast instead of rendering inline alert', () => {
     routeState.query = {
       error: 'oauth failed',
     }
@@ -122,7 +122,7 @@ describe('OAuthCallbackView', () => {
 
     expect(showErrorMock).toHaveBeenCalledWith('oauth failed')
     expect(wrapper.text()).not.toContain('oauth failed')
-    expect(wrapper.find('.bg-red-50').exists()).toBe(false)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
   it('does not render manual copy fields for direct email oauth callback visits', async () => {
@@ -133,6 +133,7 @@ describe('OAuthCallbackView', () => {
     await vi.dynamicImportSettled()
 
     expect(exchangePendingOAuthCompletionMock).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[role="alert"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('auth.oauth.invalidCallbackTitle')
     expect(wrapper.text()).toContain('auth.oauth.invalidCallbackHint')
     expect(wrapper.find('input[readonly]').exists()).toBe(false)
@@ -222,5 +223,32 @@ describe('OAuthCallbackView', () => {
     })
     expect(apiPostMock.mock.calls[0][1]).not.toHaveProperty('email')
     expect(setTokenMock).toHaveBeenCalledWith('token-2')
+  })
+
+  it('renders inline registration completion errors with role="alert"', async () => {
+    routeState.path = '/auth/oauth/callback'
+    exchangePendingOAuthCompletionMock.mockResolvedValue({
+      error: 'registration_completion_required',
+      provider: 'github',
+      redirect: '/dashboard',
+      resolved_email: 'verified@example.com',
+      invitation_required: false,
+    })
+    apiPostMock.mockRejectedValue({
+      response: { data: { message: 'Registration failed' } },
+    })
+
+    const wrapper = mount(OAuthCallbackView)
+    await vi.dynamicImportSettled()
+
+    const passwordInputs = wrapper.findAll('input[type="password"]')
+    await passwordInputs[0].setValue('secret-456')
+    await passwordInputs[1].setValue('secret-456')
+    await wrapper.findAll('button').at(0)?.trigger('click')
+    await vi.dynamicImportSettled()
+
+    const alert = wrapper.find('[role="alert"]')
+    expect(alert.exists()).toBe(true)
+    expect(alert.text()).toContain('Registration failed')
   })
 })

@@ -19,7 +19,7 @@ function FilterSelect<Value extends string | number>({ label, value, options, ch
       }}>
       <Label>{label}</Label>
       <Select.Trigger><Select.Value /><Select.Indicator /></Select.Trigger>
-      <Select.Popover className="public-menu public-palette">
+      <Select.Popover className="public-menu public-palette plaza-filter-menu">
         <ListBox>
           {options.map(option => (
             <ListBox.Item key={option.id} id={String(option.id)} textValue={option.label}>

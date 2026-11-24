@@ -12,19 +12,19 @@
       </div>
 
       <!-- Registration Disabled Message -->
-      <div v-if="settingsFailed" class="space-y-3" role="alert">
-        <p>{{ t('auth.registrationSettingsUnavailable') }}</p>
+      <div v-if="settingsFailed" class="auth-subpanel space-y-3" role="alert">
+        <p class="auth-text text-sm leading-relaxed">{{ t('auth.registrationSettingsUnavailable') }}</p>
         <HeroButton variant="secondary" type="button" class="btn btn-secondary" @press="loadRegistrationSettings">{{ t('common.tryAgain') }}</HeroButton>
       </div>
       <div
         v-else-if="!registrationEnabled"
-        class="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-900/20"
+        class="rounded-xl border border-amber-200/90 bg-amber-50/90 p-4 dark:border-amber-500/25 dark:bg-amber-500/10"
       >
         <div class="flex items-start gap-3">
           <div class="flex-shrink-0">
-            <Icon name="exclamationCircle" size="md" class="text-amber-500" />
+            <Icon name="exclamationCircle" size="md" class="text-amber-600 dark:text-amber-400" />
           </div>
-          <p class="text-sm text-amber-700 dark:text-amber-400">
+          <p class="text-sm text-amber-800 dark:text-amber-300">
             {{ t('auth.registrationDisabled') }}
           </p>
         </div>
@@ -39,7 +39,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="mail" size="md" class="auth-input-icon" />
             </div>
             <HeroInput
               id="email"
@@ -63,7 +63,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="lock" size="md" class="auth-input-icon" />
             </div>
             <HeroInput
               id="password"
@@ -81,7 +81,7 @@
               :disabled="registrationActionDisabled"
               :aria-label="t(showPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
               @press="showPassword = !showPassword"
-              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5"
             >
               <Icon v-if="showPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
@@ -99,7 +99,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="lock" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="lock" size="md" class="auth-input-icon" />
             </div>
             <HeroInput
               id="confirmPassword"
@@ -117,7 +117,7 @@
               :disabled="registrationActionDisabled"
               :aria-label="t(showConfirmPassword ? 'auth.concealPassword' : 'auth.revealPassword')"
               @press="showConfirmPassword = !showConfirmPassword"
-              class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-dark-300"
+              class="absolute inset-y-0 right-0 flex items-center pr-3.5"
             >
               <Icon v-if="showConfirmPassword" name="eyeOff" size="md" />
               <Icon v-else name="eye" size="md" />
@@ -132,7 +132,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="key" size="md" :class="invitationValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
+              <Icon name="key" size="md" :class="invitationValidation.valid ? 'auth-input-icon-valid' : 'auth-input-icon'" />
             </div>
             <HeroInput
               id="invitation_code"
@@ -141,31 +141,31 @@
               :disabled="registrationActionDisabled"
               class="input pl-11 pr-10"
               :class="{
-                'border-green-500 focus:border-green-500 focus:ring-green-500': invitationValidation.valid,
-                'border-red-500 focus:border-red-500 focus:ring-red-500': invitationValidation.invalid || errors.invitation_code
+                'auth-input-valid': invitationValidation.valid,
+                'input-error': invitationValidation.invalid || errors.invitation_code
               }"
               :placeholder="t('auth.invitationCodePlaceholder')"
               @input="handleInvitationCodeInput"
             />
             <!-- Validation indicator -->
-            <div v-if="invitationValidating" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
-              <svg class="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+            <div v-if="invitationValidating" role="status" aria-live="polite" :aria-label="t('auth.invitationCodeValidating')" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
+              <svg class="auth-muted h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </div>
             <div v-else-if="invitationValidation.valid" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
-              <Icon name="checkCircle" size="md" class="text-green-500" />
+              <Icon name="checkCircle" size="md" class="text-emerald-600 dark:text-emerald-400" />
             </div>
             <div v-else-if="invitationValidation.invalid || errors.invitation_code" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
-              <Icon name="exclamationCircle" size="md" class="text-red-500" />
+              <Icon name="exclamationCircle" size="md" class="text-red-500 dark:text-red-400" />
             </div>
           </div>
           <!-- Invitation code validation result -->
           <transition name="fade">
-            <div v-if="invitationValidation.valid" class="mt-2 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 dark:bg-green-900/20">
-              <Icon name="checkCircle" size="sm" class="text-green-600 dark:text-green-400" />
-              <span class="text-sm text-green-700 dark:text-green-400">
+            <div v-if="invitationValidation.valid" class="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/90 px-3 py-2 dark:border-emerald-500/25 dark:bg-emerald-500/10">
+              <Icon name="checkCircle" size="sm" class="text-emerald-600 dark:text-emerald-400" />
+              <span class="text-sm text-emerald-700 dark:text-emerald-300">
                 {{ t('auth.invitationCodeValid') }}
               </span>
             </div>
@@ -176,11 +176,11 @@
         <div v-else-if="affiliateEnabled" data-testid="affiliate-invitation-field">
           <label for="affiliate_code" class="input-label">
             {{ t('auth.invitationCodeLabel') }}
-            <span class="ml-1 text-xs font-normal text-gray-400 dark:text-dark-500">({{ t('common.optional') }})</span>
+            <span class="auth-optional">({{ t('common.optional') }})</span>
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="key" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="key" size="md" class="auth-input-icon" />
             </div>
             <HeroInput
               id="affiliate_code"
@@ -197,11 +197,11 @@
         <div v-if="promoCodeEnabled">
           <label for="promo_code" class="input-label">
             {{ t('auth.promoCodeLabel') }}
-            <span class="ml-1 text-xs font-normal text-gray-400 dark:text-dark-500">({{ t('common.optional') }})</span>
+            <span class="auth-optional">({{ t('common.optional') }})</span>
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="gift" size="md" :class="promoValidation.valid ? 'text-green-500' : 'text-gray-400 dark:text-dark-500'" />
+              <Icon name="gift" size="md" :class="promoValidation.valid ? 'auth-input-icon-valid' : 'auth-input-icon'" />
             </div>
             <HeroInput
               id="promo_code"
@@ -210,31 +210,31 @@
               :disabled="registrationActionDisabled"
               class="input pl-11 pr-10"
               :class="{
-                'border-green-500 focus:border-green-500 focus:ring-green-500': promoValidation.valid,
-                'border-red-500 focus:border-red-500 focus:ring-red-500': promoValidation.invalid
+                'auth-input-valid': promoValidation.valid,
+                'input-error': promoValidation.invalid
               }"
               :placeholder="t('auth.promoCodePlaceholder')"
               @input="handlePromoCodeInput"
             />
             <!-- Validation indicator -->
-            <div v-if="promoValidating" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
-              <svg class="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
+            <div v-if="promoValidating" role="status" aria-live="polite" :aria-label="t('auth.promoCodeValidating')" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
+              <svg class="auth-muted h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </div>
             <div v-else-if="promoValidation.valid" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
-              <Icon name="checkCircle" size="md" class="text-green-500" />
+              <Icon name="checkCircle" size="md" class="text-emerald-600 dark:text-emerald-400" />
             </div>
             <div v-else-if="promoValidation.invalid" class="absolute inset-y-0 right-0 flex items-center pr-3.5">
-              <Icon name="exclamationCircle" size="md" class="text-red-500" />
+              <Icon name="exclamationCircle" size="md" class="text-red-500 dark:text-red-400" />
             </div>
           </div>
           <!-- Promo code validation result -->
           <transition name="fade">
-            <div v-if="promoValidation.valid" class="mt-2 flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 dark:bg-green-900/20">
-              <Icon name="gift" size="sm" class="text-green-600 dark:text-green-400" />
-              <span class="text-sm text-green-700 dark:text-green-400">
+            <div v-if="promoValidation.valid" class="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/90 px-3 py-2 dark:border-emerald-500/25 dark:bg-emerald-500/10">
+              <Icon name="gift" size="sm" class="text-emerald-600 dark:text-emerald-400" />
+              <span class="text-sm tabular-nums text-emerald-700 dark:text-emerald-300">
                 {{ t('auth.promoCodeValid', { amount: promoValidation.bonusAmount?.toFixed(2) }) }}
               </span>
             </div>
@@ -280,7 +280,8 @@
         >
           <svg
             v-if="isLoading"
-            class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin motion-reduce:animate-none text-current"
+            aria-hidden="true"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -311,12 +312,12 @@
       </form>
 
       <div v-if="registrationEnabled && !settingsFailed && showOAuthLogin" class="space-y-3 pt-1">
-        <div class="flex items-center gap-3">
-          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-          <span class="text-xs text-gray-500 dark:text-dark-400">
+        <div class="auth-divider flex items-center gap-3">
+          <div class="auth-divider-line h-px flex-1"></div>
+          <span class="auth-divider-label text-xs">
             {{ t('auth.oauthOrContinue') }}
           </span>
-          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+          <div class="auth-divider-line h-px flex-1"></div>
         </div>
 
         <EmailOAuthButtons
@@ -357,11 +358,11 @@
 
     <!-- Footer -->
     <template #footer>
-      <p class="text-gray-500 dark:text-dark-400">
+      <p class="auth-footer-text">
         {{ t('auth.alreadyHaveAccount') }}
         <HeroLink
           to="/login"
-          class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          class="auth-link font-medium"
         >
           {{ t('auth.signIn') }}
         </HeroLink>
@@ -1135,12 +1136,24 @@ function buildRegistrationErrorMessage(error: unknown, fallback: string): string
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: all 0.3s ease;
+  transition: all var(--duration-base, 220ms) var(--ease-out, ease);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: none;
+  }
 }
 </style>

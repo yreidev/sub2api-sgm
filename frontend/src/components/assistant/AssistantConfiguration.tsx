@@ -1,6 +1,6 @@
 import { Alert, Button, Card, Description, InputGroup, Label, ListBox, Select, TextArea, TextField } from '@heroui/react'
-import { Cable, ClipboardCopy, Copy } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Cable, Check, ClipboardCopy, Copy } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 export interface ConfigurationProps {
   title: string
@@ -11,6 +11,7 @@ export interface ConfigurationProps {
   apiUrl: string
   apiUrlLabel: string
   copyLabel: string
+  copiedLabel?: string
   copyUrlLabel: string
   keyLabel: string
   copyKeyLabel: string
@@ -32,15 +33,50 @@ export interface ConfigurationProps {
   copy: (value: string) => Promise<boolean>
 }
 
+type CopyTarget = 'model' | 'url' | 'key' | 'all'
+
 export function AssistantConfiguration(props: ConfigurationProps) {
   const [manual, setManual] = useState<{ value: string; label: string } | null>(null)
+  const [copiedTarget, setCopiedTarget] = useState<CopyTarget | null>(null)
   const attempt = useRef(0)
-  async function copy(value: string, label: string) {
+  const resetTimer = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    attempt.current += 1
+    if (resetTimer.current !== null) {
+      window.clearTimeout(resetTimer.current)
+      resetTimer.current = null
+    }
+  }, [])
+
+  async function copy(target: CopyTarget, value: string, label: string) {
     const request = ++attempt.current
     setManual(null)
     const copied = await props.copy(value)
-    if (!copied && request === attempt.current) setManual({ value, label })
+    if (request !== attempt.current) return
+    if (copied) {
+      setCopiedTarget(target)
+      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current)
+      resetTimer.current = window.setTimeout(() => {
+        setCopiedTarget(current => (current === target ? null : current))
+        resetTimer.current = null
+      }, 1800)
+      return
+    }
+    setCopiedTarget(null)
+    setManual({ value, label })
   }
+
+  const copiedText = props.copiedLabel || props.copyLabel
+  const copiedAnnouncement = copiedTarget === null
+    ? ''
+    : copiedTarget === 'model'
+      ? `${copiedText}: ${props.model ?? props.modelLabel}`
+      : copiedTarget === 'url'
+        ? `${copiedText}: ${props.apiUrlLabel}`
+        : copiedTarget === 'key'
+          ? `${copiedText}: ${props.keyLabel}`
+          : `${copiedText}: ${props.copyConfigurationLabel}`
 
   return (
     <Card className="sgm-assistant-panel sgm-configuration" aria-label={props.title}>
@@ -64,17 +100,37 @@ export function AssistantConfiguration(props: ConfigurationProps) {
                 </ListBox>
               </Select.Popover>
             </Select>
-            <Button className="sgm-copy-button" variant="ghost" isDisabled={!props.model} aria-label={props.copyModelLabel} onPress={() => { if (props.model) void copy(props.model, props.copyModelLabel) }}><Copy aria-hidden="true" />{props.copyLabel}</Button>
+            <Button
+              className="sgm-copy-button"
+              variant="ghost"
+              data-copied={copiedTarget === 'model' || undefined}
+              isDisabled={!props.model}
+              aria-label={props.copyModelLabel}
+              onPress={() => { if (props.model) void copy('model', props.model, props.copyModelLabel) }}
+            >
+              {copiedTarget === 'model' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+              {copiedTarget === 'model' ? copiedText : props.copyLabel}
+            </Button>
           </div>
           <Description id="sgm-model-hint">{props.modelHint}</Description>
         </div>
-        {props.retryModelsLabel && <Button className="!min-h-11 justify-self-start" variant="ghost" onPress={props.loadModels}>{props.retryModelsLabel}</Button>}
+        {props.retryModelsLabel && <Button className="sgm-retry-button !min-h-11 justify-self-start" variant="ghost" onPress={props.loadModels}>{props.retryModelsLabel}</Button>}
         <TextField className="min-w-0" isReadOnly value={props.apiUrl}>
           <Label>{props.apiUrlLabel}</Label>
           <InputGroup className="min-w-0 w-full">
             <InputGroup.Input className="!min-h-11 !w-0 min-w-0 sgm-assistant-code" />
             <InputGroup.Suffix>
-              <Button size="sm" variant="ghost" className="sgm-copy-button" aria-label={props.copyUrlLabel} onPress={() => copy(props.apiUrl, props.copyUrlLabel)}><Copy aria-hidden="true" />{props.copyLabel}</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="sgm-copy-button"
+                data-copied={copiedTarget === 'url' || undefined}
+                aria-label={props.copyUrlLabel}
+                onPress={() => copy('url', props.apiUrl, props.copyUrlLabel)}
+              >
+                {copiedTarget === 'url' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                {copiedTarget === 'url' ? copiedText : props.copyLabel}
+              </Button>
             </InputGroup.Suffix>
           </InputGroup>
         </TextField>
@@ -88,15 +144,25 @@ export function AssistantConfiguration(props: ConfigurationProps) {
             )}
             <InputGroup.Suffix>
               {props.projectKey ? (
-                <Button size="sm" variant="ghost" className="sgm-copy-button" aria-label={props.copyKeyLabel} onPress={() => copy(props.projectKey, props.copyKeyLabel)}><Copy aria-hidden="true" />{props.copyLabel}</Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="sgm-copy-button"
+                  data-copied={copiedTarget === 'key' || undefined}
+                  aria-label={props.copyKeyLabel}
+                  onPress={() => copy('key', props.projectKey, props.copyKeyLabel)}
+                >
+                  {copiedTarget === 'key' ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                  {copiedTarget === 'key' ? copiedText : props.copyLabel}
+                </Button>
               ) : (
-                <Button size="sm" className="!min-h-11" isPending={props.preparing} onPress={props.acquireKey}>{props.acquireLabel}</Button>
+                <Button size="sm" variant="primary" className="sgm-acquire-button !min-h-11" isPending={props.preparing} onPress={props.acquireKey}>{props.acquireLabel}</Button>
               )}
             </InputGroup.Suffix>
           </InputGroup>
           <Description>{props.keyHint}</Description>
         </TextField>
-        {manual && <TextArea autoFocus rows={manual.value.includes('\n') ? 3 : 2} readOnly aria-label={manual.label} value={manual.value} onFocus={event => event.currentTarget.select()} />}
+        {manual && <TextArea autoFocus className="sgm-manual-copy sgm-assistant-code" rows={manual.value.includes('\n') ? 3 : 2} readOnly aria-label={manual.label} value={manual.value} onFocus={event => event.currentTarget.select()} />}
         {props.error && (
           <Alert status="warning">
             <Alert.Content>
@@ -107,17 +173,25 @@ export function AssistantConfiguration(props: ConfigurationProps) {
       </Card.Content>
       {(props.projectKey && props.model) ? (
         <Card.Footer className="sgm-configuration-footer">
-          <Button variant="secondary" className="sgm-copy-all" onPress={() => copy([
-            props.apiUrlLabel + ': ' + props.apiUrl,
-            props.keyLabel + ': ' + props.projectKey,
-            props.modelLabel + ': ' + props.model,
-          ].join('\n'), props.copyConfigurationLabel)}>
-            <ClipboardCopy aria-hidden="true" />{props.copyConfigurationLabel}
+          <Button
+            variant="secondary"
+            className="sgm-copy-all"
+            data-copied={copiedTarget === 'all' || undefined}
+            aria-label={props.copyConfigurationLabel}
+            onPress={() => copy('all', [
+              props.apiUrlLabel + ': ' + props.apiUrl,
+              props.keyLabel + ': ' + props.projectKey,
+              props.modelLabel + ': ' + props.model,
+            ].join('\n'), props.copyConfigurationLabel)}
+          >
+            {copiedTarget === 'all' ? <Check aria-hidden="true" /> : <ClipboardCopy aria-hidden="true" />}
+            {copiedTarget === 'all' ? (props.copiedLabel || props.copyConfigurationLabel) : props.copyConfigurationLabel}
           </Button>
         </Card.Footer>
       ) : props.balanceHint && (
-        <Card.Footer><p className="text-sm text-muted">{props.balanceHint}</p></Card.Footer>
+        <Card.Footer className="sgm-configuration-footer"><p className="sgm-configuration-hint">{props.balanceHint}</p></Card.Footer>
       )}
+      <span className="sgm-sr-only" role="status" aria-live="polite">{copiedAnnouncement}</span>
     </Card>
   )
 }

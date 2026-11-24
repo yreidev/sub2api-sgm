@@ -16,6 +16,6 @@ function setContent(element: HTMLDivElement | null) {
 }
 const host = useReactHost(() => createElement(Card, {
   className: 'sgm-assistant-panel min-w-0',
-  children: createElement(Card.Content, null, createElement('div', { ref: setContent })),
+  children: createElement(Card.Content, null, createElement('div', { ref: setContent, className: 'min-w-0' })),
 }))
 </script>

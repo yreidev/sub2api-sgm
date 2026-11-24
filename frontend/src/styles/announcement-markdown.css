@@ -111,3 +111,114 @@
 .markdown-body em {
   @apply italic text-gray-600 dark:text-gray-400;
 }
+
+/* SGM Public / HeroUI / Assistant palette overrides */
+:is(.public-palette, .sgm-assistant-overview) .markdown-body {
+  color: var(--ink);
+  font-family: inherit;
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body > :first-child {
+  margin-top: 0;
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body h1,
+:is(.public-palette, .sgm-assistant-overview) .markdown-body h2,
+:is(.public-palette, .sgm-assistant-overview) .markdown-body h3,
+:is(.public-palette, .sgm-assistant-overview) .markdown-body h4,
+:is(.public-palette, .sgm-assistant-overview) .markdown-body strong {
+  color: var(--ink);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body h1,
+:is(.public-palette, .sgm-assistant-overview) .markdown-body h2 {
+  border-bottom-color: var(--line-subtle);
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body p {
+  color: var(--ink);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body em {
+  color: var(--muted);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body a {
+  color: var(--accent);
+  text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body a:hover {
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body li::marker {
+  color: var(--accent);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body blockquote {
+  border-left-color: var(--accent);
+  background: var(--tint);
+  color: var(--muted);
+  border-radius: 0 0.625rem 0.625rem 0;
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body blockquote::before {
+  color: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body code {
+  border: 1px solid var(--line-subtle);
+  background: var(--tint);
+  color: var(--accent);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body pre {
+  border-color: var(--line);
+  background: var(--panel-subtle);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body pre code {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body hr {
+  border-top: 1px solid var(--line);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body table {
+  border-color: var(--line);
+  background: var(--panel);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body th,
+:is(.public-palette, .sgm-assistant-overview) .markdown-body td {
+  border-color: var(--line-subtle);
+  color: var(--ink);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body th {
+  background: var(--panel-subtle);
+  background-image: none;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body tbody tr:hover {
+  background: var(--tint);
+}
+
+:is(.public-palette, .sgm-assistant-overview) .markdown-body img {
+  border-color: var(--line);
+  box-shadow: var(--shadow-card);
+}

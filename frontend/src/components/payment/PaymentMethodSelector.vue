@@ -24,24 +24,24 @@
           :disabled="!method.available"
           :aria-pressed="selected === method.type"
           :class="[
-            'relative flex h-[60px] min-w-0 flex-col items-center justify-center rounded-lg border px-3 transition-all',
+            'relative flex h-[60px] min-w-0 flex-col items-center justify-center rounded-xl border px-3 transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:focus-visible:outline-primary-400 active:scale-[0.985] motion-reduce:transition-none motion-reduce:active:scale-100',
             !method.available
-              ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-50 dark:border-dark-700 dark:bg-dark-800/50'
+              ? 'cursor-not-allowed border-gray-200/80 bg-gray-50/80 opacity-50 active:scale-100 dark:border-dark-700 dark:bg-dark-800/50'
               : selected === method.type
                 ? methodSelectedClass(method.type)
-                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-200 dark:hover:border-dark-500',
+                : 'border-gray-200/90 bg-white text-gray-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:border-gray-300 hover:bg-gray-50/70 dark:border-dark-600 dark:bg-dark-800/80 dark:text-gray-100 dark:hover:border-dark-500 dark:hover:bg-dark-700/70',
           ]"
           @click="method.available && emit('select', method.type)"
         >
           <span class="flex w-full min-w-0 items-center justify-center gap-2">
             <img :src="methodIcon(method.type)" alt="" class="h-7 w-7 shrink-0 object-contain" />
-            <span class="flex min-w-0 flex-col items-start leading-none">
+            <span class="flex min-w-0 flex-col items-start leading-tight">
               <span data-testid="payment-method-label" class="block w-full truncate text-base font-semibold">
                 {{ methodLabel(method) }}
               </span>
               <span
                 v-if="method.fee_rate > 0"
-                class="text-[10px] tracking-wide text-gray-500 dark:text-dark-400"
+                class="text-[11px] font-medium tabular-nums tracking-wide text-gray-500 dark:text-dark-400"
               >
                 {{ t('payment.fee') }} {{ method.fee_rate }}%
               </span>
@@ -112,10 +112,10 @@ function methodLabel(method: PaymentMethodOption): string {
 }
 
 function methodSelectedClass(type: string): string {
-  if (isBuiltInAlipayMethod(type)) return 'border-[#02A9F1] bg-blue-50 text-gray-900 shadow-sm dark:bg-blue-950 dark:text-gray-100'
-  if (isBuiltInWxpayMethod(type)) return 'border-[#09BB07] bg-green-50 text-gray-900 shadow-sm dark:bg-green-950 dark:text-gray-100'
-  if (type === 'stripe') return 'border-[#676BE5] bg-indigo-50 text-gray-900 shadow-sm dark:bg-indigo-950 dark:text-gray-100'
-  if (type === 'airwallex') return 'border-[#FF6B3D] bg-orange-50 text-gray-900 shadow-sm dark:border-[#FF8E3C] dark:bg-orange-950 dark:text-gray-100'
-  return 'border-primary-500 bg-primary-50 text-gray-900 shadow-sm dark:bg-primary-950 dark:text-gray-100'
+  if (isBuiltInAlipayMethod(type)) return 'border-[#02A9F1] bg-sky-50/85 text-gray-900 shadow-sm ring-1 ring-inset ring-[#02A9F1] dark:bg-sky-950/50 dark:text-gray-100'
+  if (isBuiltInWxpayMethod(type)) return 'border-[#09BB07] bg-emerald-50/85 text-gray-900 shadow-sm ring-1 ring-inset ring-[#09BB07] dark:bg-emerald-950/50 dark:text-gray-100'
+  if (type === 'stripe') return 'border-[#676BE5] bg-indigo-50/85 text-gray-900 shadow-sm ring-1 ring-inset ring-[#676BE5] dark:bg-indigo-950/50 dark:text-gray-100'
+  if (type === 'airwallex') return 'border-[#FF6B3D] bg-orange-50/85 text-gray-900 shadow-sm ring-1 ring-inset ring-[#FF6B3D] dark:border-[#FF8E3C] dark:bg-orange-950/50 dark:text-gray-100 dark:ring-[#FF8E3C]'
+  return 'border-primary-500 bg-primary-50/85 text-gray-900 shadow-sm ring-1 ring-inset ring-primary-500 dark:bg-primary-950/50 dark:text-gray-100'
 }
 </script>

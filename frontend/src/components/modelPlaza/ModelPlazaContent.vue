@@ -128,52 +128,209 @@ const filteredGroups = computed(() => {
 </script>
 
 <style scoped>
-.plaza-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; color: var(--ink); }
-.plaza-page { padding-block: clamp(1.5rem, 4vw, 3rem); }
-.plaza-hero { position: relative; isolation: isolate; overflow: hidden; padding: clamp(1.4rem, 4vw, 2.75rem); border: 1px solid var(--line); border-radius: 18px; background: var(--tint); }
-.plaza-hero::before { content: ""; position: absolute; z-index: -1; inset: 0 0 0 35%; background: url('../../assets/sgm-balance-wave.webp') right center / cover; opacity: var(--wave-opacity); mask-image: linear-gradient(90deg, transparent, black); }
-.plaza-hero h1 { font-size: clamp(1.75rem, 3.6vw, 2.5rem); font-weight: 500; letter-spacing: -.035em; line-height: 1.2; }
-.plaza-hero p { margin-top: .5rem; color: var(--muted); line-height: 1.6; }
-.plaza-panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; }
-.plaza-status { padding: 2.5rem 1rem; text-align: center; color: var(--muted); }
-.plaza-retry { margin-top: .75rem; min-height: 44px; padding: .5rem 1rem; border-radius: 10px; background: var(--accent); color: var(--on-accent); }
-.plaza-description {
-  padding: 1rem 1.25rem;
+.plaza-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  color: var(--ink);
+}
+.plaza-page {
+  padding-block: clamp(1.5rem, 4vw, 3rem);
+}
+
+.plaza-hero[data-slot="card"] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  gap: 0;
+  padding: clamp(1.5rem, 4vw, 2.75rem);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 58% 92% at 92% 118%, rgb(179 218 214 / 42%), transparent 54%),
+    radial-gradient(ellipse 52% 72% at 98% -18%, rgb(206 218 236 / 38%), transparent 56%),
+    linear-gradient(112deg, #f3faf8 0%, var(--tint, #ebf5f4) 55%, #e0eeef 100%);
+  box-shadow:
+    var(--shadow-inset-top, inset 0 1px 0 rgb(255 255 255 / 85%)),
+    var(--shadow-card, 0 1px 2px rgb(22 43 52 / 5%), 0 4px 12px -2px rgb(22 43 52 / 5%));
+}
+.plaza-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 0 35%;
+  pointer-events: none;
+  background: url('../../assets/sgm-balance-wave.webp') right center / cover no-repeat;
+  opacity: var(--wave-opacity, .72);
+  mix-blend-mode: multiply;
+  mask-image: linear-gradient(90deg, transparent, #000 55%);
+}
+.dark .plaza-hero[data-slot="card"] {
+  background:
+    radial-gradient(ellipse 58% 92% at 92% 118%, rgb(138 211 205 / 12%), transparent 54%),
+    radial-gradient(ellipse 52% 72% at 98% -18%, rgb(92 149 170 / 12%), transparent 56%),
+    linear-gradient(116deg, #1b343b 0%, #152b31 56%, #12242a 100%);
+  border-color: var(--line);
+}
+.dark .plaza-hero::before {
+  mix-blend-mode: screen;
+  filter: invert(1) hue-rotate(180deg) brightness(1.4);
+}
+.plaza-hero h1 {
+  font-size: clamp(1.75rem, 3.6vw, 2.5rem);
+  font-weight: 500;
+  letter-spacing: -.03em;
+  line-height: 1.18;
+  text-wrap: balance;
+  color: var(--ink);
+}
+.plaza-hero p {
+  margin-top: .5rem;
+  max-width: 56ch;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.plaza-panel,
+.plaza-panel[data-slot="card"] {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card, 0 1px 2px rgb(22 43 52 / 5%), 0 4px 12px -2px rgb(22 43 52 / 5%));
+}
+
+.plaza-status,
+.plaza-status[data-slot="card"] {
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+  color: var(--muted);
+}
+
+.plaza-retry {
+  --button-bg: var(--accent);
+  --button-bg-hover: var(--accent-hover, #12454f);
+  --button-bg-pressed: var(--accent-active, #0e3840);
+  --button-fg: var(--on-accent);
+  margin-top: .25rem;
+  min-height: 44px;
+  padding: .5rem 1.25rem;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 500;
+  box-shadow: var(--shadow-btn-primary, 0 1px 2px rgb(18 69 79 / 24%), inset 0 1px 0 rgb(255 255 255 / 16%));
+  transition:
+    background-color var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+.plaza-retry:hover {
+  background: var(--accent-hover, #12454f);
+}
+.plaza-retry:active {
+  background: var(--accent-active, #0e3840);
+  transform: scale(0.985);
+}
+.plaza-retry:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: var(--ring-focus, 0 0 0 3px rgb(18 108 122 / 18%));
+}
+
+.plaza-description[data-slot="card"] {
+  gap: 0;
+  padding: 1.125rem 1.375rem;
+  font-size: .9375rem;
   line-height: 1.7;
+  color: var(--ink);
   overflow-wrap: anywhere;
 }
 
 .plaza-description :deep(h1),
 .plaza-description :deep(h2),
 .plaza-description :deep(h3) {
-  @apply mb-2 mt-3 font-semibold text-gray-900 first:mt-0 dark:text-white;
+  margin: .875rem 0 .4rem;
+  font-weight: 600;
+  letter-spacing: -.015em;
+  color: var(--ink);
+}
+.plaza-description :deep(h1:first-child),
+.plaza-description :deep(h2:first-child),
+.plaza-description :deep(h3:first-child) {
+  margin-top: 0;
 }
 
 .plaza-description :deep(p) {
-  @apply mb-2 text-gray-700 last:mb-0 dark:text-dark-200;
+  margin: 0 0 .5rem;
+  color: var(--ink);
+}
+.plaza-description :deep(p:last-child) {
+  margin-bottom: 0;
 }
 
 .plaza-description :deep(a) {
-  @apply text-primary-600 underline underline-offset-4 hover:text-primary-700 dark:text-primary-300;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transition: color var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+.plaza-description :deep(a:hover) {
+  color: var(--accent-hover, var(--accent));
 }
 
 .plaza-description :deep(ul) {
-  @apply mb-2 list-disc pl-5;
+  margin: 0 0 .5rem;
+  list-style-type: disc;
+  padding-inline-start: 1.25rem;
 }
 
 .plaza-description :deep(ol) {
-  @apply mb-2 list-decimal pl-5;
+  margin: 0 0 .5rem;
+  list-style-type: decimal;
+  padding-inline-start: 1.25rem;
 }
 
 .plaza-description :deep(li) {
-  @apply mb-0.5 text-gray-700 dark:text-dark-200;
+  margin-bottom: .2rem;
+  color: var(--ink);
 }
 
 .plaza-description :deep(code) {
-  @apply rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs dark:bg-dark-800;
+  border-radius: 6px;
+  border: 1px solid var(--line-subtle, var(--line));
+  background: var(--tint);
+  color: var(--ink);
+  padding: .1rem .375rem;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: .8125rem;
 }
 
 .plaza-description :deep(blockquote) {
-  @apply my-2 border-l-4 border-gray-300 pl-3 text-gray-600 dark:border-dark-600 dark:text-dark-300;
+  margin: .625rem 0;
+  border-inline-start: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  background: var(--panel-subtle, var(--tint));
+  padding: .5rem .875rem;
+  color: var(--muted);
+}
+
+.plaza-description :deep(hr) {
+  margin: .75rem 0;
+  border: 0;
+  border-top: 1px solid var(--line-subtle, var(--line));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plaza-retry,
+  .plaza-description :deep(a) {
+    transition: none;
+  }
+  .plaza-retry:active,
+  .plaza-retry[data-pressed="true"] {
+    transform: none;
+  }
 }
 </style>

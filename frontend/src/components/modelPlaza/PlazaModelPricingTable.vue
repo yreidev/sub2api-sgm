@@ -1,6 +1,7 @@
 <template>
   <div>
     <p class="scroll-hint">{{ t('modelPlaza.table.scrollHint') }}</p>
+    <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ copyAnnouncement }}</span>
     <div ref="host"></div>
     <Teleport :disabled="!scrollArea" :to="scrollArea">
     <table :class="table.content()" data-slot="table-content" class="w-full min-w-[1000px] table-auto border-collapse text-sm tabular-nums">
@@ -10,15 +11,15 @@
       </colgroup>
       <thead :class="table.header()" data-slot="table-header">
         <tr :class="table.row()" data-slot="table-row"
-          class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400"
+          class="table-head-row text-xs font-semibold uppercase tracking-wider"
         >
           <th :class="table.column()" data-slot="table-column"
             rowspan="2"
-            class="border-r border-gray-100 py-2.5 pl-5 pr-4 text-left align-middle dark:border-dark-700/60"
+            class="col-sep-r py-2.5 text-left align-middle"
           >
             {{ t('modelPlaza.table.model') }}
           </th>
-          <th :class="table.column()" data-slot="table-column" colspan="3" class="pz-bg pt-2 text-center">
+          <th :class="table.column()" data-slot="table-column" colspan="3" class="pz-bg th-center pt-2 text-center">
             <div class="pz-title border-b pb-2 font-semibold">
               {{ t('modelPlaza.table.paidPrice') }}
               <span class="pz-unit ml-1 normal-case font-normal">{{ t('modelPlaza.table.unitPerMillion') }}</span>
@@ -26,27 +27,27 @@
           </th>
           <th :class="table.column()" data-slot="table-column"
             colspan="3"
-            class="border-l border-gray-100 pt-2 text-center dark:border-dark-700/60"
+            class="col-sep-l th-center pt-2 text-center"
           >
-            <div class="border-b border-gray-200 pb-2 plaza-muted dark:border-dark-600">
+            <div class="official-title border-b pb-2 plaza-muted">
               {{ t('modelPlaza.table.officialPrice') }}
               <span class="ml-1 normal-case font-normal plaza-muted">{{ t('modelPlaza.table.unitPerMillion') }}</span>
             </div>
           </th>
           <th :class="table.column()" data-slot="table-column"
             rowspan="2"
-            class="border-l border-gray-100 py-2.5 pl-3 pr-5 text-right align-middle dark:border-dark-700/60"
+            class="col-sep-l th-right py-2.5 text-right align-middle"
           >
             {{ t('modelPlaza.table.rate') }}
           </th>
         </tr>
         <tr :class="table.row()" data-slot="table-row"
-          class="border-b border-gray-200 text-left text-[11px] font-medium uppercase leading-4 tracking-wide plaza-muted dark:border-dark-700"
+          class="table-subhead-row text-left text-[11px] font-medium uppercase leading-4 tracking-wide plaza-muted"
         >
           <th :class="table.column()" data-slot="table-column" class="pz-bg px-3 py-2 font-medium">{{ t('modelPlaza.table.input') }}</th>
           <th :class="table.column()" data-slot="table-column" class="pz-bg px-3 py-2 font-medium">{{ t('modelPlaza.table.output') }}</th>
           <th :class="table.column()" data-slot="table-column" class="pz-bg px-3 py-2 font-medium">{{ t('modelPlaza.table.cache') }}</th>
-          <th :class="table.column()" data-slot="table-column" class="border-l border-gray-100 px-3 py-2 font-medium dark:border-dark-700/60">
+          <th :class="table.column()" data-slot="table-column" class="col-sep-l px-3 py-2 font-medium">
             {{ t('modelPlaza.table.input') }}
           </th>
           <th :class="table.column()" data-slot="table-column" class="px-3 py-2 font-medium">{{ t('modelPlaza.table.output') }}</th>
@@ -57,27 +58,29 @@
         <tr :class="table.row()" data-slot="table-row"
           v-for="{ model: m, period, key } in rows"
           :key="key"
-          class="border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50/70 dark:border-dark-800 dark:hover:bg-dark-800/50"
+          class="pricing-row"
         >
           <!-- 模型名 + 非 token 计费模式徽章;分时时段行额外标注时段 -->
-          <td :class="table.cell()" data-slot="table-cell" class="border-r border-gray-100 py-2.5 pl-5 pr-4 align-middle dark:border-dark-700/60">
+          <td :class="table.cell()" data-slot="table-cell" class="col-sep-r py-2.5 align-middle">
             <div class="flex flex-wrap items-center gap-1.5">
               <span class="inline-flex min-w-0 items-center gap-1">
                 <span class="model-name min-w-0">{{ m.name }}</span>
                 <HeroButton
                   icon-only
                   size="sm"
+                  class="copy-model-btn"
+                  :data-copied="copiedRowKey === key ? 'true' : undefined"
                   :title="t('modelPlaza.table.copyModelId', { model: m.name })"
                   :aria-label="t('modelPlaza.table.copyModelId', { model: m.name })"
-                  @press="copyToClipboard(m.name)"
+                  @press="handleCopyModel(key, m.name)"
                 >
-                  <Icon name="copy" size="sm" aria-hidden="true" />
+                  <Icon :name="copiedRowKey === key ? 'check' : 'copy'" size="sm" aria-hidden="true" />
                 </HeroButton>
               </span>
               <!-- 时段徽章紧跟模型名,其余徽章排在后面,空间不足时先换行的是它们 -->
               <span
                 v-if="period"
-                class="inline-flex items-center whitespace-nowrap rounded-md bg-gray-100 px-1 py-0.5 font-mono text-[10px] font-medium text-gray-500 dark:bg-dark-700/70 dark:text-dark-300"
+                class="model-meta-badge inline-flex items-center whitespace-nowrap font-mono"
                 :title="timePricingRowHint(m)"
               >
                 <span v-if="m.time_pricing?.weekdays_only" class="mr-1 font-sans">{{
@@ -96,13 +99,13 @@
               </span>
               <span
                 v-if="billingMode(m) !== BILLING_MODE_TOKEN"
-                class="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700/70 dark:text-dark-300"
+                class="model-meta-badge"
               >
                 {{ billingModeLabel(m) }}
               </span>
               <span
                 v-if="m.long_context_basis === 'marginal'"
-                class="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-700/70 dark:text-dark-300"
+                class="model-meta-badge"
                 :title="t('modelPlaza.table.tierHintMarginal')"
               >
                 {{ t('modelPlaza.table.marginalBadge') }}
@@ -110,7 +113,7 @@
               <span
                 v-for="([effort, multiplier]) in reasoningEffortMultipliers(m)"
                 :key="effort"
-                class="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+                class="model-effort-badge"
                 :title="t('modelPlaza.table.reasoningMultiplierHint', { effort, multiplier })"
                 :data-reasoning-effort="effort"
               >
@@ -121,7 +124,7 @@
 
           <!-- token 计费:输入 / 输出 / 缓存(写/读),有阶梯时每档一行;档位标签只放输入列,其余列按行对齐 -->
           <template v-if="billingMode(m) === BILLING_MODE_TOKEN">
-            <td :class="table.cell()" data-slot="table-cell" class="pz-cell px-3 py-2.5 align-middle font-mono font-semibold text-gray-900 dark:text-gray-50">
+            <td :class="table.cell()" data-slot="table-cell" class="pz-cell paid-price px-3 py-2.5 align-middle font-mono font-semibold">
               <template v-if="tokenIntervals(m).length">
                 <div
                   v-for="(iv, idx) in tokenIntervals(m)"
@@ -134,7 +137,7 @@
               </template>
               <template v-else>{{ paidPerMillion(m.pricing?.input_price, period) }}</template>
             </td>
-            <td :class="table.cell()" data-slot="table-cell" class="pz-cell px-3 py-2.5 align-middle font-mono font-semibold text-gray-900 dark:text-gray-50">
+            <td :class="table.cell()" data-slot="table-cell" class="pz-cell paid-price px-3 py-2.5 align-middle font-mono font-semibold">
               <template v-if="tokenIntervals(m).length">
                 <div
                   v-for="(iv, idx) in tokenIntervals(m)"
@@ -152,7 +155,7 @@
                 <div
                   v-for="(iv, idx) in tokenIntervals(m)"
                   :key="idx"
-                  class="price-tier whitespace-nowrap font-mono text-xs leading-5 text-gray-800 dark:text-gray-200"
+                  class="price-tier paid-cache whitespace-nowrap font-mono text-xs leading-5"
                   :title="tierHint(m)"
                 >
                   <template v-if="iv.cache_write_price != null || iv.cache_write_1h_price != null || iv.cache_write_12h_price != null || iv.cache_read_price != null">
@@ -171,7 +174,7 @@
               </template>
               <div
                 v-else-if="hasCachePricing(m)"
-                class="space-y-0.5 font-mono text-xs text-gray-800 dark:text-gray-200"
+                class="paid-cache space-y-0.5 font-mono text-xs"
               >
                 <div>
                   <span class="mr-1 font-sans font-normal plaza-muted">{{ t('modelPlaza.table.cacheWrite') }}</span>
@@ -203,7 +206,7 @@
                 <span
                   v-for="(iv, idx) in requestIntervals(m)"
                   :key="idx"
-                  class="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-800 dark:bg-dark-700/60 dark:text-gray-200"
+                  class="request-tier-chip inline-flex items-center gap-1 font-mono text-xs"
                 >
                   <span class="font-sans plaza-muted">{{ tierLabel(iv) }}</span>
                   {{ paidRequestPrice(m, iv.per_request_price)
@@ -211,7 +214,7 @@
                 </span>
               </div>
               <template v-else-if="m.pricing?.per_request_price != null">
-                <span class="font-mono font-semibold text-gray-900 dark:text-gray-50">
+                <span class="paid-price font-mono font-semibold">
                   {{ paidRequestPrice(m, m.pricing.per_request_price) }}
                 </span>
                 <span class="ml-1 text-xs plaza-muted">{{ perUnitSuffix(m) }}</span>
@@ -222,7 +225,7 @@
 
           <!-- 官方价格(参考价,不乘倍率;官方有阶梯时每档一行) -->
           <td :class="table.cell()" data-slot="table-cell"
-            class="border-l border-gray-100 px-3 py-2.5 align-middle font-mono text-xs text-gray-500 dark:border-dark-700/60 dark:text-dark-400"
+            class="col-sep-l official-price px-3 py-2.5 align-middle font-mono text-xs"
           >
             <template v-if="officialIntervals(m).length">
               <div
@@ -236,7 +239,7 @@
             </template>
             <template v-else>{{ official(m.official_pricing?.input_price) }}</template>
           </td>
-          <td :class="table.cell()" data-slot="table-cell" class="px-3 py-2.5 align-middle font-mono text-xs text-gray-500 dark:text-dark-400">
+          <td :class="table.cell()" data-slot="table-cell" class="official-price px-3 py-2.5 align-middle font-mono text-xs">
             <template v-if="officialIntervals(m).length">
               <div
                 v-for="(iv, idx) in officialIntervals(m)"
@@ -254,7 +257,7 @@
               <div
                 v-for="(iv, idx) in officialIntervals(m)"
                 :key="idx"
-                class="price-tier whitespace-nowrap font-mono text-xs leading-5 text-gray-500 dark:text-dark-400"
+                class="price-tier official-price whitespace-nowrap font-mono text-xs leading-5"
                 :title="t('modelPlaza.table.tierHint')"
               >
                 <template v-if="iv.cache_write_price != null || iv.cache_write_1h_price != null || iv.cache_write_12h_price != null || iv.cache_read_price != null">
@@ -273,7 +276,7 @@
             </template>
             <div
               v-else-if="m.official_pricing && hasOfficialCache(m.official_pricing)"
-              class="space-y-0.5 font-mono text-xs text-gray-500 dark:text-dark-400"
+              class="official-price space-y-0.5 font-mono text-xs"
             >
               <div>
                 <span class="mr-1 font-sans font-normal plaza-muted">{{ t('modelPlaza.table.cacheWrite') }}</span>
@@ -296,24 +299,24 @@
 
           <!-- 折扣倍率(分时时段行展示 生效倍率×时段倍率;生图独立倍率行展示独立倍率;专属倍率划线展示原倍率) -->
           <td :class="table.cell()" data-slot="table-cell"
-            class="border-l border-gray-100 py-2.5 pl-3 pr-5 text-right align-middle font-mono text-xs dark:border-dark-700/60"
+            class="col-sep-l td-right py-2.5 text-right align-middle font-mono text-xs"
           >
             <span
               v-if="period"
-              class="font-bold text-primary-600 dark:text-primary-400"
+              class="rate-accent font-bold"
               :title="t('modelPlaza.table.timePricingRateHint', { rate: effectiveRate, multiplier: period.multiplier })"
               >{{ periodRate(period) }}x</span
             >
             <span
               v-else-if="usesIndependentMediaRate(m)"
-              class="font-bold text-gray-700 dark:text-gray-300"
+              class="rate-value font-bold"
               >{{ requestRate(m) }}x</span
             >
             <template v-else-if="hasCustomRate">
               <span class="mr-1 plaza-muted line-through">{{ rateMultiplier }}x</span>
-              <span class="font-bold text-primary-600 dark:text-primary-400">{{ effectiveRate }}x</span>
+              <span class="rate-accent font-bold">{{ effectiveRate }}x</span>
             </template>
-            <span v-else class="font-bold text-gray-700 dark:text-gray-300">{{ effectiveRate }}x</span>
+            <span v-else class="rate-value font-bold">{{ effectiveRate }}x</span>
           </td>
         </tr>
       </tbody>
@@ -324,7 +327,7 @@
 
 <script setup lang="ts">
 import { tableVariants } from '@heroui/styles'
-import { computed, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { createElement } from 'react'
 import { Table } from '@heroui/react'
 import HeroButton from '@/components/hero/HeroButton.vue'
@@ -379,6 +382,36 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const { copyToClipboard } = useClipboard()
+const copiedRowKey = ref<string | null>(null)
+const copyAnnouncement = ref('')
+let copyResetTimer: ReturnType<typeof setTimeout> | null = null
+let copySequence = 0
+let disposed = false
+
+async function handleCopyModel(rowKey: string, modelName: string) {
+  const sequence = ++copySequence
+  const ok = await copyToClipboard(modelName)
+  if (!ok || disposed || sequence !== copySequence) return
+  copiedRowKey.value = rowKey
+  copyAnnouncement.value = `${t('common.copied')}: ${modelName}`
+  if (copyResetTimer) clearTimeout(copyResetTimer)
+  copyResetTimer = setTimeout(() => {
+    copyResetTimer = null
+    if (disposed) return
+    if (copiedRowKey.value === rowKey) {
+      copiedRowKey.value = null
+      copyAnnouncement.value = ''
+    }
+  }, 1600)
+}
+
+onBeforeUnmount(() => {
+  disposed = true
+  if (copyResetTimer) {
+    clearTimeout(copyResetTimer)
+    copyResetTimer = null
+  }
+})
 // Native merged cells preserve grouped headers and the per-request price spanning three columns.
 const table = tableVariants({ variant: 'secondary' })
 const scrollArea = shallowRef<HTMLDivElement | null>(null)
@@ -590,33 +623,281 @@ function trimZero(n: number): string {
 </script>
 
 <style scoped>
-:deep(.plaza-pricing-table) { overflow-x: auto; scrollbar-color: var(--field-line) var(--panel); }
-:deep(.plaza-pricing-table:focus-visible) { outline: 2px solid var(--focus); outline-offset: -2px; }
-.scroll-hint { display: none; margin: 0; padding: .6rem 1.25rem; font-size: .8125rem; color: var(--muted); background: var(--field); }
-table { --model-column-width: 10rem; }
-.model-column { width: var(--model-column-width); }
-thead tr:first-child th:first-child, tbody td:first-child { min-width: var(--model-column-width); }
-thead tr:first-child th:last-child { white-space: nowrap; }
-thead th, tbody td { padding-inline: .75rem; }
-.cache-windows { display: flex; gap: .375rem; color: var(--muted); }
+:deep(.plaza-pricing-table) {
+  overflow-x: auto;
+  scrollbar-color: var(--field-line) var(--panel);
+}
+:deep(.plaza-pricing-table:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+.scroll-hint {
+  display: none;
+  margin: 0;
+  padding: .55rem 1.25rem;
+  font-size: .8125rem;
+  color: var(--muted);
+  background: var(--panel-subtle, var(--field));
+  border-bottom: 1px solid var(--line-subtle, var(--line));
+}
+
+table {
+  --model-column-width: 10rem;
+  font-variant-numeric: tabular-nums;
+}
+.model-column {
+  width: var(--model-column-width);
+}
+thead tr:first-child th:first-child,
+tbody td:first-child {
+  min-width: var(--model-column-width);
+}
+thead tr:first-child th:last-child {
+  white-space: nowrap;
+}
+thead th,
+tbody td {
+  padding-inline: .75rem;
+}
+
+/* Override HeroUI Table secondary variant corners/dividers/hover so SGM tokens own the table surface. */
+table[data-slot="table-content"] thead th[data-slot="table-column"] {
+  background-color: var(--panel-subtle, #f7fafa);
+  border-radius: 0;
+  color: var(--muted);
+}
+:deep(.table-root--secondary) table[data-slot="table-content"] thead tr[data-slot="table-row"] th[data-slot="table-column"]:first-child,
+:deep(.table-root--secondary) table[data-slot="table-content"] thead tr[data-slot="table-row"] th[data-slot="table-column"]:last-child {
+  border-radius: 0;
+}
+table[data-slot="table-content"] thead th[data-slot="table-column"]::after {
+  content: none;
+}
+table[data-slot="table-content"] thead th[data-slot="table-column"].pz-bg {
+  background-color: var(--tint);
+}
+table[data-slot="table-content"] thead th[data-slot="table-column"].th-center {
+  text-align: center;
+}
+table[data-slot="table-content"] thead th[data-slot="table-column"].th-right {
+  text-align: right;
+}
+table[data-slot="table-content"] tbody td[data-slot="table-cell"].td-right {
+  text-align: right;
+}
+table[data-slot="table-content"] thead tr.table-subhead-row th[data-slot="table-column"] {
+  border-bottom: 1px solid var(--line);
+}
+
+table[data-slot="table-content"] .col-sep-r {
+  border-inline-end: 1px solid var(--line-subtle, var(--line));
+}
+table[data-slot="table-content"] .col-sep-l {
+  border-inline-start: 1px solid var(--line-subtle, var(--line));
+}
+
+table[data-slot="table-content"] tbody tr[data-slot="table-row"] > td[data-slot="table-cell"] {
+  background-color: transparent;
+  border-bottom: 1px solid var(--line-subtle, var(--line));
+  transition: background-color var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+table[data-slot="table-content"] tbody tr[data-slot="table-row"]:last-child > td[data-slot="table-cell"] {
+  border-bottom: 0;
+}
+table[data-slot="table-content"] tbody tr[data-slot="table-row"] > td[data-slot="table-cell"].pz-cell {
+  background-color: var(--tint);
+}
+@media (hover: hover) {
+  table[data-slot="table-content"] tbody tr[data-slot="table-row"]:hover > td[data-slot="table-cell"] {
+    background-color: var(--panel-subtle, #f7fafa);
+  }
+  table[data-slot="table-content"] tbody tr[data-slot="table-row"]:hover > td[data-slot="table-cell"].pz-cell {
+    background-color: var(--tint-strong, var(--tint));
+  }
+}
+
+.cache-windows {
+  display: flex;
+  gap: .375rem;
+  color: var(--muted);
+}
 /* 每档的输入、输出、缓存共用行高，缓存写入时长独占第二行。 */
-tr:has(.cache-windows) .price-tier { min-height: 2.5rem; }
-.model-name { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
-.pz-cell, .pz-bg { background-color: var(--tint); }
-.pz-title { color: var(--accent); border-color: var(--line); }
-.pz-unit, .plaza-muted { color: var(--muted); }
+tr:has(.cache-windows) .price-tier {
+  min-height: 2.5rem;
+}
+.price-tier {
+  font-variant-numeric: tabular-nums;
+}
+
+.model-name {
+  color: var(--ink);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.copy-model-btn[data-slot="button"] {
+  --button-bg: transparent;
+  --button-bg-hover: var(--tint);
+  --button-bg-pressed: var(--tint-strong, var(--tint));
+  position: relative;
+  width: 1.625rem;
+  height: 1.625rem;
+  min-width: 1.625rem;
+  min-height: 1.625rem;
+  padding: 0;
+  border-radius: 6px;
+  flex: none;
+  color: var(--muted);
+  opacity: .72;
+  transition:
+    color var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    background-color var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    opacity var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--duration-fast, 150ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
+}
+@media (pointer: coarse) {
+  .copy-model-btn[data-slot="button"]::after {
+    content: '';
+    position: absolute;
+    inset: -0.5rem;
+  }
+}
+@media (hover: hover) {
+  .pricing-row:hover .copy-model-btn[data-slot="button"] {
+    opacity: 1;
+  }
+  .copy-model-btn[data-slot="button"]:hover {
+    color: var(--ink);
+    background-color: var(--tint);
+    opacity: 1;
+  }
+}
+.copy-model-btn[data-slot="button"]:active {
+  transform: scale(0.94);
+}
+.copy-model-btn[data-slot="button"]:focus-visible,
+.copy-model-btn[data-slot="button"][data-focus-visible="true"] {
+  opacity: 1;
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+.copy-model-btn[data-slot="button"][data-copied="true"] {
+  color: var(--accent);
+  background-color: var(--accent-soft, var(--tint));
+  opacity: 1;
+}
+
+.model-meta-badge {
+  border-radius: 6px;
+  border: 1px solid var(--line-subtle, var(--line));
+  background-color: var(--panel-subtle, var(--tint));
+  padding: .125rem .375rem;
+  font-size: 10px;
+  line-height: 1.35;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.model-effort-badge {
+  border-radius: 6px;
+  border: 1px solid rgb(180 116 20 / 22%);
+  background-color: rgb(254 243 199 / 55%);
+  padding: .125rem .375rem;
+  font-size: 10px;
+  line-height: 1.35;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--warning-soft-foreground, #8a5009);
+}
+.dark .model-effort-badge {
+  border-color: rgb(244 197 106 / 24%);
+  background-color: rgb(244 197 106 / 12%);
+  color: var(--warning-soft-foreground, #f4c56a);
+}
+
+.request-tier-chip {
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background-color: var(--panel);
+  padding: .15rem .5rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-xs, 0 1px 2px rgb(22 43 52 / 5%));
+}
+
+.pz-title {
+  color: var(--accent);
+  border-color: var(--line);
+}
+.official-title {
+  border-color: var(--line);
+}
+.pz-unit,
+.plaza-muted {
+  color: var(--muted);
+}
+.paid-price,
+.paid-cache {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.official-price {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.rate-value {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.rate-accent {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
 @container (max-width: 999px) {
-  .scroll-hint { display: block; }
-  table { --model-column-width: 8rem; }
-  [data-slot="table-content"] thead tr:first-child th:first-child,
-  [data-slot="table-content"] tbody tr > [data-slot="table-cell"]:first-child {
+  .scroll-hint {
+    display: block;
+  }
+  table {
+    --model-column-width: 8rem;
+  }
+  table[data-slot="table-content"] thead tr:first-child th[data-slot="table-column"]:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background-color: var(--panel-subtle, #f7fafa);
+    border-radius: 0;
+    box-shadow: inset -1px 0 0 var(--line), 6px 0 12px -4px rgb(22 43 52 / 10%);
+    padding-inline: .75rem;
+  }
+  table[data-slot="table-content"] tbody tr[data-slot="table-row"] > td[data-slot="table-cell"]:first-child {
     position: sticky;
     left: 0;
     z-index: 1;
     background-color: var(--panel);
     border-radius: 0;
-    box-shadow: inset -1px 0 var(--line);
+    box-shadow: inset -1px 0 0 var(--line), 6px 0 12px -4px rgb(22 43 52 / 10%);
     padding-inline: .75rem;
+  }
+  @media (hover: hover) {
+    table[data-slot="table-content"] tbody tr[data-slot="table-row"]:hover > td[data-slot="table-cell"]:first-child {
+      background-color: var(--panel-subtle, #f7fafa);
+    }
+  }
+  .dark table[data-slot="table-content"] thead tr:first-child th[data-slot="table-column"]:first-child,
+  .dark table[data-slot="table-content"] tbody tr[data-slot="table-row"] > td[data-slot="table-cell"]:first-child {
+    box-shadow: inset -1px 0 0 var(--line), 8px 0 16px -4px rgb(0 0 0 / 42%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  table[data-slot="table-content"] tbody tr[data-slot="table-row"] > td[data-slot="table-cell"],
+  .copy-model-btn[data-slot="button"] {
+    transition: none;
+  }
+  .copy-model-btn[data-slot="button"]:active,
+  .copy-model-btn[data-slot="button"][data-pressed="true"] {
+    transform: none;
   }
 }
 </style>

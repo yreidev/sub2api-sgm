@@ -219,9 +219,10 @@ describe('PaymentStatusPanel', () => {
     })
 
     await flushPromises()
-    expect(wrapper.text()).toContain('payment.qr.openPayWindow')
+    const reopenButton = wrapper.get('[data-testid="reopen-payment-window"]')
+    expect(reopenButton.text()).toContain('payment.qr.openPayWindow')
 
-    await wrapper.get('button.btn.btn-secondary.text-sm').trigger('click')
+    await reopenButton.trigger('click')
     expect(openSpy).toHaveBeenCalledWith(
       'https://pay.example.com/session/42',
       'paymentPopup',
@@ -438,5 +439,36 @@ describe('PaymentStatusPanel', () => {
     wrapper.unmount()
     Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
     if (originalHidden) Object.defineProperty(document, 'hidden', originalHidden)
+  })
+
+  it.each([
+    ['COMPLETED', 'payment.result.success', false],
+    ['CANCELLED', 'payment.qr.cancelled', false],
+    ['EXPIRED', 'payment.qr.expired', false],
+    ['FAILED', 'payment.result.failed', true],
+  ])('exposes polite status live region for %s terminal state without wrapping countdown timers', async (status, expectedText, waitForCredit) => {
+    pollOrderStatus.mockResolvedValue(orderFactory(status))
+    const wrapper = mount(PaymentStatusPanel, {
+      props: {
+        orderId: 42,
+        qrCode: 'https://pay.example.com/qr/42',
+        expiresAt: '2099-01-01T12:30:00Z',
+        paymentType: 'alipay',
+        orderType: 'balance',
+        waitForCredit,
+      },
+      global: { stubs: { Icon: true } },
+    })
+
+    await flushPromises()
+    const countdown = wrapper.get('.psp-countdown')
+    expect(countdown.element.closest('[aria-live]')).toBeNull()
+
+    await vi.advanceTimersByTimeAsync(3000)
+    await flushPromises()
+
+    const statusRegion = wrapper.get('[role="status"][aria-live="polite"]')
+    expect(statusRegion.text()).toContain(expectedText)
+    wrapper.unmount()
   })
 })

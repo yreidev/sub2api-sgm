@@ -1,21 +1,21 @@
 <template>
-  <div class="min-h-screen bg-gray-50 px-4 py-10 dark:bg-dark-900">
-    <div class="mx-auto max-w-2xl">
-      <div v-if="isProcessing" class="card p-6 text-center">
-        <div class="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"></div>
-        <h1 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
+  <div class="public-palette auth-callback-page">
+    <div class="auth-callback-shell">
+      <div v-if="isProcessing" role="status" aria-live="polite" class="auth-callback-card text-center">
+        <div class="auth-callback-spinner mx-auto h-9 w-9 animate-spin motion-reduce:animate-none rounded-full" aria-hidden="true"></div>
+        <h1 class="auth-callback-heading mt-4">
           {{ t('auth.oauth.callbackTitle') }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="auth-callback-intro mt-2">
           {{ t('auth.oauth.callbackHint') }}
         </p>
       </div>
 
-      <div v-else-if="needsRegistrationCompletion" class="card p-6">
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+      <div v-else-if="needsRegistrationCompletion" class="auth-callback-card">
+        <h1 class="auth-callback-heading">
           {{ t('auth.oidc.callbackTitle', { providerName }) }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="auth-callback-intro mt-2">
           {{ registrationHint }}
         </p>
 
@@ -65,7 +65,7 @@
               @keyup.enter="handleSubmitRegistration"
             />
           </div>
-          <p v-if="registrationError" class="text-sm text-red-600 dark:text-red-400">
+          <p v-if="registrationError" role="alert" class="text-sm text-red-600 dark:text-red-400">
             {{ registrationError }}
           </p>
           <HeroButton variant="primary"
@@ -79,11 +79,11 @@
         </div>
       </div>
 
-      <div v-else-if="invalidCallback" class="card p-6 text-center">
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+      <div v-else-if="invalidCallback" role="alert" class="auth-callback-card text-center">
+        <h1 class="auth-callback-heading">
           {{ t('auth.oauth.invalidCallbackTitle') }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="auth-callback-intro mt-2">
           {{ t('auth.oauth.invalidCallbackHint') }}
         </p>
         <HeroButton variant="primary" class="btn btn-primary mt-6" type="button" @press="router.replace('/login')">
@@ -91,11 +91,11 @@
         </HeroButton>
       </div>
 
-      <div v-else class="card p-6">
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+      <div v-else class="auth-callback-card">
+        <h1 class="auth-callback-heading">
           {{ t('auth.oauth.callbackTitle') }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="auth-callback-intro mt-2">
           {{ t('auth.oauth.callbackHint') }}
         </p>
 
@@ -103,8 +103,8 @@
           <div>
             <label class="input-label">{{ t('auth.oauth.code') }}</label>
             <div class="flex gap-2">
-              <HeroInput class="input flex-1 font-mono text-sm" :model-value="code" readonly />
-              <HeroButton variant="secondary" class="btn btn-secondary" type="button" :disabled="!code" @press="copy(code)">
+              <HeroInput class="input auth-callback-mono min-w-0 flex-1 text-sm" :model-value="code" readonly />
+              <HeroButton variant="secondary" class="btn btn-secondary shrink-0" type="button" :disabled="!code" @press="copy(code)">
                 {{ t('common.copy') }}
               </HeroButton>
             </div>
@@ -113,9 +113,9 @@
           <div>
             <label class="input-label">{{ t('auth.oauth.state') }}</label>
             <div class="flex gap-2">
-              <HeroInput class="input flex-1 font-mono text-sm" :model-value="state" readonly />
+              <HeroInput class="input auth-callback-mono min-w-0 flex-1 text-sm" :model-value="state" readonly />
               <HeroButton variant="secondary"
-                class="btn btn-secondary"
+                class="btn btn-secondary shrink-0"
                 type="button"
                 :disabled="!state"
                 @press="copy(state)"
@@ -128,9 +128,9 @@
           <div>
             <label class="input-label">{{ t('auth.oauth.fullUrl') }}</label>
             <div class="flex gap-2">
-              <HeroInput class="input flex-1 font-mono text-xs" :model-value="fullUrl" readonly />
+              <HeroInput class="input auth-callback-mono min-w-0 flex-1 text-xs" :model-value="fullUrl" readonly />
               <HeroButton variant="secondary"
-                class="btn btn-secondary"
+                class="btn btn-secondary shrink-0"
                 type="button"
                 :disabled="!fullUrl"
                 @press="copy(fullUrl)"
@@ -148,6 +148,12 @@
 <script setup lang="ts">
 import HeroButton from '@/components/hero/HeroButton.vue'
 import HeroInput from '@/components/hero/HeroInput.vue'
+import 'virtual:sgm-heroui.css'
+import '@/styles/public-palette.css'
+import '@fontsource/ibm-plex-sans/latin-400.css'
+import '@fontsource/ibm-plex-sans/latin-500.css'
+import '@fontsource/ibm-plex-sans/latin-600.css'
+import '@fontsource/ibm-plex-mono/latin-400.css'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -413,3 +419,260 @@ const copy = (value: string) => {
   copyToClipboard(value)
 }
 </script>
+
+<style scoped>
+.auth-callback-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(2rem, 6vw, 4.5rem) 1rem;
+  background: var(--page);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+
+.auth-callback-shell {
+  width: min(100%, 38rem);
+}
+
+.auth-callback-card {
+  position: relative;
+  isolation: isolate;
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow-card), var(--shadow-inset-top);
+  overflow-wrap: anywhere;
+}
+
+.auth-callback-card::before {
+  position: absolute;
+  content: "";
+  z-index: -1;
+  inset: 0 0 auto auto;
+  width: 48%;
+  height: 5rem;
+  border-top-right-radius: inherit;
+  background: url('../../assets/sgm-balance-wave.webp') center / cover;
+  opacity: var(--wave-opacity);
+  mix-blend-mode: multiply;
+  mask-image: linear-gradient(212deg, #000 10%, transparent 72%);
+  pointer-events: none;
+}
+
+.dark .auth-callback-card::before {
+  mix-blend-mode: screen;
+  filter: invert(1) hue-rotate(180deg) brightness(1.4);
+}
+
+.auth-callback-heading {
+  margin: 0;
+  font-size: clamp(1.375rem, 3.2vw, 1.625rem);
+  line-height: 1.26;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+.auth-callback-intro {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.auth-callback-spinner {
+  border: 2.5px solid var(--line);
+  border-top-color: var(--accent);
+}
+
+.auth-callback-card :deep(.input-label) {
+  display: block;
+  margin-bottom: 0.4375rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.auth-callback-card :deep(.input[data-slot="input"]),
+.auth-callback-card :deep(.input) {
+  min-height: 46px;
+  border-radius: 10px;
+  border: 1px solid var(--field-line);
+  background: var(--field);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  box-shadow: var(--shadow-xs);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.auth-callback-card :deep(.input[data-slot="input"]::placeholder),
+.auth-callback-card :deep(.input::placeholder) {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.auth-callback-card :deep(.input[data-slot="input"]:hover:not(:disabled):not([readonly]):not(:focus)),
+.auth-callback-card :deep(.input:hover:not(:disabled):not([readonly]):not(:focus)) {
+  border-color: var(--field-line-hover);
+  background: var(--field);
+}
+
+.auth-callback-card :deep(.input[data-slot="input"]:focus),
+.auth-callback-card :deep(.input[data-slot="input"][data-focused="true"]),
+.auth-callback-card :deep(.input:focus) {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  border-color: var(--focus);
+  box-shadow: var(--ring-focus);
+}
+
+.auth-callback-card :deep(.input[data-slot="input"][readonly]),
+.auth-callback-card :deep(.input[readonly]),
+.auth-callback-card :deep(.input[data-slot="input"]:disabled),
+.auth-callback-card :deep(.input:disabled) {
+  background: var(--panel-subtle);
+  border-color: var(--line);
+  color: var(--muted);
+  box-shadow: none;
+  opacity: 1;
+}
+
+.auth-callback-card :deep(.auth-callback-mono) {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.auth-callback-card :deep(.btn-primary) {
+  min-height: 46px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  --button-bg: var(--accent);
+  --button-bg-hover: var(--accent-hover);
+  --button-bg-pressed: var(--accent-active);
+  --button-fg: var(--on-accent);
+  color: var(--on-accent);
+  background: var(--accent);
+  background-image: none;
+  box-shadow: var(--shadow-btn-primary);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.auth-callback-card :deep(.btn-primary:hover:not(:disabled)),
+.auth-callback-card :deep(.btn-primary[data-hovered="true"]:not(:disabled)) {
+  background: var(--accent-hover);
+  background-image: none;
+}
+
+.auth-callback-card :deep(.btn-primary:active:not(:disabled)),
+.auth-callback-card :deep(.btn-primary[data-pressed="true"]:not(:disabled)) {
+  background: var(--accent-active);
+  transform: scale(0.985);
+}
+
+.auth-callback-card :deep(.btn-primary:focus-visible),
+.auth-callback-card :deep(.btn-primary[data-focus-visible="true"]) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: var(--ring-focus);
+}
+
+.auth-callback-card :deep(.btn-primary:disabled) {
+  opacity: 0.56;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.auth-callback-card :deep(.btn-secondary) {
+  min-height: 46px;
+  border-radius: 10px;
+  border: 1px solid var(--field-line);
+  padding-inline: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  --button-bg: var(--panel-elevated);
+  --button-bg-hover: var(--tint);
+  --button-bg-pressed: var(--tint-strong);
+  --button-fg: var(--ink);
+  color: var(--ink);
+  background: var(--panel-elevated);
+  background-image: none;
+  box-shadow: var(--shadow-xs), var(--shadow-inset-top);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.auth-callback-card :deep(.btn-secondary:hover:not(:disabled)),
+.auth-callback-card :deep(.btn-secondary[data-hovered="true"]:not(:disabled)) {
+  background: var(--tint);
+  border-color: var(--field-line-hover);
+}
+
+.dark .auth-callback-card :deep(.btn-secondary) {
+  --button-bg-hover: var(--tint-strong);
+  --button-bg-pressed: var(--tint);
+}
+
+.dark .auth-callback-card :deep(.btn-secondary:hover:not(:disabled)),
+.dark .auth-callback-card :deep(.btn-secondary[data-hovered="true"]:not(:disabled)) {
+  background: var(--tint-strong);
+  border-color: var(--field-line-hover);
+}
+
+.auth-callback-card :deep(.btn-secondary:active:not(:disabled)),
+.auth-callback-card :deep(.btn-secondary[data-pressed="true"]:not(:disabled)) {
+  background: var(--tint-strong);
+  transform: scale(0.985);
+}
+
+.auth-callback-card :deep(.btn-secondary:focus-visible),
+.auth-callback-card :deep(.btn-secondary[data-focus-visible="true"]) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-color: var(--focus);
+  box-shadow: var(--ring-focus);
+}
+
+.auth-callback-card :deep(.btn-secondary:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-callback-card :deep(.input[data-slot="input"]),
+  .auth-callback-card :deep(.input),
+  .auth-callback-card :deep(.btn-primary),
+  .auth-callback-card :deep(.btn-secondary) {
+    transition: none;
+  }
+
+  .auth-callback-spinner {
+    animation: none;
+  }
+
+  .auth-callback-card :deep(.btn-primary:active:not(:disabled)),
+  .auth-callback-card :deep(.btn-primary[data-pressed="true"]:not(:disabled)),
+  .auth-callback-card :deep(.btn-secondary:active:not(:disabled)),
+  .auth-callback-card :deep(.btn-secondary[data-pressed="true"]:not(:disabled)) {
+    transform: none;
+  }
+}
+</style>

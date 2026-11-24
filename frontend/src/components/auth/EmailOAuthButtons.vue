@@ -1,11 +1,11 @@
 <template>
   <div v-if="hasProviders" class="space-y-4">
-    <div v-if="showDivider" class="flex items-center gap-3">
-      <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-      <span class="text-xs text-gray-500 dark:text-dark-400">
+    <div v-if="showDivider" class="auth-divider flex items-center gap-3">
+      <div class="auth-divider-line h-px flex-1"></div>
+      <span class="auth-divider-label text-xs">
         {{ t('auth.oauthOrContinue') }}
       </span>
-      <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+      <div class="auth-divider-line h-px flex-1"></div>
     </div>
 
     <div :class="providerGridClass">
@@ -14,10 +14,10 @@
         :key="provider"
         type="button"
         :disabled="disabled"
-        full-width class="btn btn-secondary h-12 justify-center gap-2"
+        full-width class="btn btn-secondary justify-center gap-2"
         @press="startLogin(provider)"
       >
-        <GitHubMark v-if="provider === 'github'" class="h-5 w-5 text-gray-800 dark:text-gray-100" />
+        <GitHubMark v-if="provider === 'github'" class="h-5 w-5 text-current" />
         <GoogleMark v-else class="h-5 w-5" />
         <span class="font-medium">{{ providerLabel(provider) }}</span>
       </HeroButton>
@@ -92,3 +92,13 @@ function startLogin(provider: EmailOAuthProvider): void {
   emit('start', { provider, params })
 }
 </script>
+
+<style scoped>
+.auth-divider-line {
+  background: var(--line, #d4e0e2);
+}
+
+.auth-divider-label {
+  color: var(--muted, #4d636b);
+}
+</style>

@@ -50,6 +50,7 @@ const host = useReactHost(() => createElement(AssistantConfiguration, {
   apiUrl: baseUrl.value,
   apiUrlLabel: t('dashboard.assistantSetup.apiUrl'),
   copyLabel: t('common.copy'),
+  copiedLabel: t('common.copied'),
   copyUrlLabel: t('dashboard.assistantSetup.copyUrl'),
   keyLabel: t('dashboard.apiKeys'),
   copyKeyLabel: t('dashboard.assistantSetup.copyKey'),

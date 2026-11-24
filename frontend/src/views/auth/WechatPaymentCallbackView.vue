@@ -1,28 +1,33 @@
 <template>
-  <div class="min-h-screen bg-gray-50 px-4 py-10 dark:bg-dark-900">
-    <div class="mx-auto max-w-2xl">
-      <div class="card p-6">
-        <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+  <div class="public-palette payment-callback-page">
+    <div class="payment-callback-shell">
+      <div class="payment-callback-card">
+        <h1 class="payment-callback-heading">
           {{ callbackTitleText }}
         </h1>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="payment-callback-intro mt-2">
           {{ errorMessage || callbackProcessingText }}
         </p>
 
         <div
           v-if="!errorMessage"
+          role="status"
+          aria-live="polite"
+          :aria-label="callbackProcessingText"
           class="mt-6 flex items-center justify-center py-10"
         >
           <div
-            class="h-8 w-8 animate-spin rounded-full border-4 border-primary-500 border-t-transparent"
+            class="payment-callback-spinner h-9 w-9 animate-spin motion-reduce:animate-none rounded-full"
+            aria-hidden="true"
           ></div>
         </div>
 
         <div
           v-else
-          class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-dark-700 dark:bg-dark-800/80"
+          role="alert"
+          class="payment-callback-notice mt-6"
         >
-          <p class="text-sm text-gray-700 dark:text-gray-300">
+          <p class="payment-callback-notice-text text-sm">
             {{ errorMessage }}
           </p>
           <HeroButton variant="primary"
@@ -40,6 +45,11 @@
 
 <script setup lang="ts">
 import HeroButton from '@/components/hero/HeroButton.vue'
+import 'virtual:sgm-heroui.css'
+import '@/styles/public-palette.css'
+import '@fontsource/ibm-plex-sans/latin-400.css'
+import '@fontsource/ibm-plex-sans/latin-500.css'
+import '@fontsource/ibm-plex-sans/latin-600.css'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -149,3 +159,139 @@ onMounted(async () => {
   })
 })
 </script>
+
+<style scoped>
+.payment-callback-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(2rem, 6vw, 4.5rem) 1rem;
+  background: var(--page);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+}
+
+.payment-callback-shell {
+  width: min(100%, 36rem);
+}
+
+.payment-callback-card {
+  position: relative;
+  isolation: isolate;
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow-card), var(--shadow-inset-top);
+  overflow-wrap: anywhere;
+}
+
+.payment-callback-card::before {
+  position: absolute;
+  content: "";
+  z-index: -1;
+  inset: 0 0 auto auto;
+  width: 48%;
+  height: 5rem;
+  border-top-right-radius: inherit;
+  background: url('../../assets/sgm-balance-wave.webp') center / cover;
+  opacity: var(--wave-opacity);
+  mix-blend-mode: multiply;
+  mask-image: linear-gradient(212deg, #000 10%, transparent 72%);
+  pointer-events: none;
+}
+
+.dark .payment-callback-card::before {
+  mix-blend-mode: screen;
+  filter: invert(1) hue-rotate(180deg) brightness(1.4);
+}
+
+.payment-callback-heading {
+  margin: 0;
+  font-size: clamp(1.375rem, 3.2vw, 1.625rem);
+  line-height: 1.26;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+.payment-callback-intro {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.payment-callback-spinner {
+  border: 3px solid var(--line);
+  border-top-color: var(--accent);
+}
+
+.payment-callback-notice {
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-subtle);
+  padding: 1rem;
+}
+
+.payment-callback-notice-text {
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.payment-callback-card :deep(.btn-primary) {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding-inline: 1.125rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  --button-bg: var(--accent);
+  --button-bg-hover: var(--accent-hover);
+  --button-bg-pressed: var(--accent-active);
+  --button-fg: var(--on-accent);
+  color: var(--on-accent);
+  background: var(--accent);
+  background-image: none;
+  box-shadow: var(--shadow-btn-primary);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.payment-callback-card :deep(.btn-primary:hover:not(:disabled)),
+.payment-callback-card :deep(.btn-primary[data-hovered="true"]:not(:disabled)) {
+  background: var(--accent-hover);
+  background-image: none;
+}
+
+.payment-callback-card :deep(.btn-primary:active:not(:disabled)),
+.payment-callback-card :deep(.btn-primary[data-pressed="true"]:not(:disabled)) {
+  background: var(--accent-active);
+  transform: scale(0.985);
+}
+
+.payment-callback-card :deep(.btn-primary:focus-visible),
+.payment-callback-card :deep(.btn-primary[data-focus-visible="true"]) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: var(--ring-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payment-callback-card :deep(.btn-primary) {
+    transition: none;
+  }
+
+  .payment-callback-spinner {
+    animation: none;
+  }
+
+  .payment-callback-card :deep(.btn-primary:active:not(:disabled)),
+  .payment-callback-card :deep(.btn-primary[data-pressed="true"]:not(:disabled)) {
+    transform: none;
+  }
+}
+</style>

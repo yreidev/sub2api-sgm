@@ -4,7 +4,7 @@
     <header class="group-heading">
       <div class="flex flex-wrap items-center gap-2">
         <h2 class="min-w-0">
-          <GroupBadge :class="groupChip" data-slot="chip"
+          <GroupBadge
             :name="group.name"
             :platform="group.platform as GroupPlatform"
             :subscription-type="(group.subscription_type || 'standard') as SubscriptionType"
@@ -21,7 +21,7 @@
         <span
           :class="groupChip" data-slot="chip"
           v-if="group.is_exclusive"
-          class="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-600 dark:bg-purple-900/20 dark:text-purple-400"
+          class="plaza-badge plaza-badge-exclusive"
         >
           <Icon name="shield" size="xs" class="h-3 w-3" />
           {{ t('modelPlaza.badges.exclusive') }}
@@ -29,26 +29,26 @@
         <span
           :class="groupChip" data-slot="chip"
           v-if="group.subscription_type === 'subscription'"
-          class="inline-flex items-center rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-600 dark:bg-violet-900/20 dark:text-violet-400"
+          class="plaza-badge plaza-badge-subscription"
         >
           {{ t('modelPlaza.badges.subscription') }}
         </span>
       </div>
-      <p v-if="group.description" class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+      <p v-if="group.description" class="group-description">
         {{ group.description }}
       </p>
       <p
         v-if="peakNote"
-        class="mt-1.5 inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
+        class="group-peak-note"
       >
-        <Icon name="clock" size="xs" class="h-3 w-3" />
+        <Icon name="clock" size="xs" class="h-3 w-3 shrink-0" />
         {{ peakNote }}
       </p>
       <p
         v-if="longContextNote"
-        class="mt-1.5 flex items-center gap-1 text-xs text-gray-500 dark:text-dark-400"
+        class="group-info-note"
       >
-        <Icon name="infoCircle" size="xs" class="h-3 w-3" />
+        <Icon name="infoCircle" size="xs" class="h-3 w-3 shrink-0" />
         {{ longContextNote }}
       </p>
     </header>
@@ -69,7 +69,7 @@
         :peak-window="peakWindow"
         :peak-rate-multiplier="group.peak_rate_multiplier"
       />
-      <p v-else class="px-5 py-4 text-center text-sm text-gray-400 dark:text-dark-500">
+      <p v-else class="group-empty">
         {{ t('modelPlaza.detail.noModels') }}
       </p>
     </div>
@@ -128,8 +128,86 @@ const longContextNote = computed(() => {
 </script>
 
 <style scoped>
-.plaza-group[data-slot="card"] { padding: 0; gap: 0; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); }
-.pricing-frame { container-type: inline-size; }
-.group-heading { padding: 1.25rem; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
-.group-heading h2 > :deep(span) { max-width: 100%; font-size: 1rem; line-height: 1.5; }
+.plaza-group[data-slot="card"] {
+  padding: 0;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card, 0 1px 2px rgb(22 43 52 / 5%), 0 4px 12px -2px rgb(22 43 52 / 5%));
+}
+.pricing-frame {
+  container-type: inline-size;
+}
+.group-heading {
+  padding: 1.25rem 1.25rem 1.125rem;
+  border-bottom: 1px solid var(--line-subtle, var(--line));
+  background: var(--panel);
+  overflow-wrap: anywhere;
+}
+.group-heading h2 > :deep(span) {
+  max-width: 100%;
+  font-size: 1rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.plaza-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  border-radius: 6px;
+  padding: .15rem .5rem;
+  font-size: .75rem;
+  line-height: 1.35;
+  font-weight: 500;
+}
+.plaza-badge-exclusive {
+  background: var(--tint);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.plaza-badge-subscription {
+  background: var(--accent-soft, var(--tint));
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.group-description {
+  margin-top: .55rem;
+  font-size: .875rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.group-peak-note {
+  margin-top: .45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .75rem;
+  line-height: 1.5;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--warning-soft-foreground, #8a5009);
+}
+.dark .group-peak-note {
+  color: var(--warning-soft-foreground, #f4c56a);
+}
+.group-info-note {
+  margin-top: .4rem;
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .75rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.group-empty {
+  padding: 1.25rem;
+  text-align: center;
+  font-size: .875rem;
+  color: var(--muted);
+}
 </style>

@@ -2,19 +2,19 @@
   <div class="space-y-4">
     <HeroButton variant="secondary" type="button" :disabled="disabled" full-width class="btn btn-secondary" @press="startLogin">
       <span
-        class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
+        class="oidc-provider-badge mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold"
       >
         {{ providerInitial }}
       </span>
       {{ t('auth.oidc.signIn', { providerName: normalizedProviderName }) }}
     </HeroButton>
 
-    <div v-if="showDivider" class="flex items-center gap-3">
-      <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
-      <span class="text-xs text-gray-500 dark:text-dark-400">
+    <div v-if="showDivider" class="auth-divider flex items-center gap-3">
+      <div class="auth-divider-line h-px flex-1"></div>
+      <span class="auth-divider-label text-xs">
         {{ t('auth.oauthOrContinue') }}
       </span>
-      <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+      <div class="auth-divider-line h-px flex-1"></div>
     </div>
   </div>
 </template>
@@ -56,3 +56,19 @@ function startLogin(): void {
   emit('start', { provider: 'oidc', params: { redirect: redirectTo } })
 }
 </script>
+
+<style scoped>
+.oidc-provider-badge {
+  border: 1px solid var(--line, #d4e0e2);
+  background: var(--tint, #ebf5f4);
+  color: var(--accent, #195762);
+}
+
+.auth-divider-line {
+  background: var(--line, #d4e0e2);
+}
+
+.auth-divider-label {
+  color: var(--muted, #4d636b);
+}
+</style>

@@ -6,7 +6,7 @@
     </HeroButton>
   </div>
 
-  <p v-if="statsError" role="alert">{{ t('dashboard.assistantSetup.usageStatsError') }}</p>
+  <p v-if="statsError" role="alert" class="sgm-usage-state sgm-usage-error">{{ t('dashboard.assistantSetup.usageStatsError') }}</p>
   <dl v-else class="sgm-usage-metrics" :aria-busy="loadingStats">
     <div><dt>{{ t('dashboard.assistantSetup.actualSpendToday') }}</dt><dd>{{ stats ? money.format(stats.total_actual_cost) : '—' }}</dd></div>
     <div><dt>{{ t('dashboard.todayRequests') }}</dt><dd>{{ stats ? stats.total_requests.toLocaleString(locale) : '—' }}</dd></div>
@@ -19,9 +19,9 @@
       {{ t(expanded ? 'common.collapse' : 'dashboard.viewAllUsage') }}
     </HeroButton>
   </div>
-  <p v-if="recordsError" role="alert">{{ t('usage.failedToLoad') }}</p>
-  <p v-else-if="!records" role="status">{{ t('common.loading') }}</p>
-  <p v-else-if="records.items.length === 0">{{ t('dashboard.noUsageRecords') }}</p>
+  <p v-if="recordsError" role="alert" class="sgm-usage-state sgm-usage-error">{{ t('usage.failedToLoad') }}</p>
+  <p v-else-if="!records" role="status" class="sgm-usage-state">{{ t('common.loading') }}</p>
+  <p v-else-if="records.items.length === 0" class="sgm-usage-state">{{ t('dashboard.noUsageRecords') }}</p>
   <ul v-else class="sgm-usage-records">
     <li v-for="record in records.items" :key="record.id">
       <HeroDisclosure>
@@ -32,8 +32,8 @@
           <span class="sgm-usage-detail-label">{{ t('dashboard.assistantSetup.requestDetails') }}<Icon name="chevronDown" size="sm" aria-hidden="true" /></span>
         </template>
         <dl class="sgm-usage-details">
-          <div><dt>{{ t('dashboard.assistantSetup.requestId') }}</dt><dd>{{ record.request_id || '—' }}</dd></div>
-          <div><dt>{{ t('usage.inboundEndpoint') }}</dt><dd>{{ record.inbound_endpoint || '—' }}</dd></div>
+          <div><dt>{{ t('dashboard.assistantSetup.requestId') }}</dt><dd class="sgm-assistant-code">{{ record.request_id || '—' }}</dd></div>
+          <div><dt>{{ t('usage.inboundEndpoint') }}</dt><dd class="sgm-assistant-code">{{ record.inbound_endpoint || '—' }}</dd></div>
           <div><dt>{{ t('usage.duration') }}</dt><dd>{{ record.duration_ms == null ? '—' : record.duration_ms.toLocaleString(locale) + ' ms' }}</dd></div>
           <div><dt>{{ t('dashboard.assistantSetup.inputTokens') }}</dt><dd>{{ record.input_tokens.toLocaleString(locale) }}</dd></div>
           <div><dt>{{ t('dashboard.assistantSetup.outputTokens') }}</dt><dd>{{ record.output_tokens.toLocaleString(locale) }}</dd></div>
@@ -45,9 +45,9 @@
     </li>
   </ul>
   <nav v-if="expanded && (page > 1 || (records && records.pages > 1))" class="sgm-usage-pages" :aria-label="t('usage.title')">
-    <HeroButton type="button" class="sgm-usage-action" :disabled="loadingRecords || page <= 1" @press="changeList(true, page - 1)">{{ t('pagination.previous') }}</HeroButton>
-    <span v-if="records">{{ t('pagination.pageOf', { page, total: records.pages }) }}</span>
-    <HeroButton type="button" class="sgm-usage-action" :disabled="loadingRecords || !records || page >= records.pages" @press="changeList(true, page + 1)">{{ t('pagination.next') }}</HeroButton>
+    <HeroButton type="button" class="sgm-usage-action sgm-usage-page-button" :disabled="loadingRecords || page <= 1" @press="changeList(true, page - 1)">{{ t('pagination.previous') }}</HeroButton>
+    <span v-if="records" class="sgm-usage-page-info">{{ t('pagination.pageOf', { page, total: records.pages }) }}</span>
+    <HeroButton type="button" class="sgm-usage-action sgm-usage-page-button" :disabled="loadingRecords || !records || page >= records.pages" @press="changeList(true, page + 1)">{{ t('pagination.next') }}</HeroButton>
   </nav>
 </template>
 

@@ -13,16 +13,16 @@
 
       <!-- Success State -->
       <div v-if="isSubmitted" class="space-y-6">
-        <div class="rounded-xl border border-green-200 bg-green-50 p-6 dark:border-green-800/50 dark:bg-green-900/20">
+        <div class="rounded-xl border border-emerald-200/80 bg-emerald-50/90 p-6 dark:border-emerald-500/25 dark:bg-emerald-500/10">
           <div class="flex flex-col items-center gap-4 text-center">
-            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-800/50">
-              <Icon name="checkCircle" size="lg" class="text-green-600 dark:text-green-400" />
+            <div class="flex h-12 w-12 items-center justify-center rounded-full border border-emerald-200/80 bg-emerald-100/80 dark:border-emerald-500/25 dark:bg-emerald-500/15">
+              <Icon name="checkCircle" size="lg" class="text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-green-800 dark:text-green-200">
+              <h3 class="text-lg font-semibold text-emerald-900 dark:text-emerald-200">
                 {{ t('auth.resetEmailSent') }}
               </h3>
-              <p class="mt-2 text-sm text-green-700 dark:text-green-300">
+              <p class="mt-2 text-sm text-emerald-700 dark:text-emerald-300">
                 {{ t('auth.resetEmailSentHint') }}
               </p>
             </div>
@@ -32,7 +32,7 @@
         <div class="text-center">
           <HeroLink
             to="/login"
-            class="inline-flex items-center gap-2 font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+            class="auth-link inline-flex items-center gap-2 font-medium"
           >
             <Icon name="arrowLeft" size="sm" />
             {{ t('auth.backToLogin') }}
@@ -49,7 +49,7 @@
           </label>
           <div class="relative">
             <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-              <Icon name="mail" size="md" class="text-gray-400 dark:text-dark-500" />
+              <Icon name="mail" size="md" class="auth-input-icon" />
             </div>
             <HeroInput
               id="email"
@@ -93,7 +93,8 @@
         >
           <svg
             v-if="isLoading"
-            class="-ml-1 mr-2 h-4 w-4 animate-spin text-white"
+            class="-ml-1 mr-2 h-4 w-4 animate-spin motion-reduce:animate-none text-current"
+            aria-hidden="true"
             fill="none"
             viewBox="0 0 24 24"
           >
@@ -119,11 +120,11 @@
 
     <!-- Footer -->
     <template #footer>
-      <p class="text-gray-500 dark:text-dark-400">
+      <p class="auth-footer-text">
         {{ t('auth.rememberedPassword') }}
         <HeroLink
           to="/login"
-          class="font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
+          class="auth-link font-medium"
         >
           {{ t('auth.signIn') }}
         </HeroLink>
@@ -338,12 +339,24 @@ async function handleSubmit(): Promise<void> {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: all 0.3s ease;
+  transition: all var(--duration-base, 220ms) var(--ease-out, ease);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: none;
+  }
 }
 </style>

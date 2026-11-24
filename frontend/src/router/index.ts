@@ -854,7 +854,7 @@ router.beforeEach(async (to, _from, next) => {
   // OAuth consent and payment callbacks are transaction flows outside the console.
   if (authStore.isAuthenticated && !authStore.isAdmin) {
     const otherConsole = requiresAuth && to.name !== 'Dashboard' && to.name !== 'MCPOAuthAuthorize'
-    if (otherConsole || ['Home', 'Setup', 'KeyUsage', 'ModelPlaza'].includes(String(to.name))) {
+    if (otherConsole || ['Home', 'Setup', 'KeyUsage'].includes(String(to.name))) {
       if (!appStore.backendModeEnabled && to.name === 'PurchaseSubscription') {
         const resume = to.query.wechat_resume === '1' ? to.query : {}
         next({ path: '/dashboard', query: { ...resume, recharge: '1' }, replace: true })
@@ -892,13 +892,19 @@ router.beforeEach(async (to, _from, next) => {
       return
     }
     // Model Plaza:公开路由但受「启用开关 + 可选强制登录」双重控制(后端同口径 fail-closed)
-    if (to.path === '/model-plaza') {
+    if (to.name === 'ModelPlaza') {
       if (!appStore.publicSettingsLoaded) {
         try {
           await appStore.fetchPublicSettings()
         } catch (error) {
           console.warn('Failed to load public settings in route guard', error)
         }
+      }
+      // Backend mode:登录的非管理员也不可见(匿名由下方公共拦截处理,广场不在白名单)
+      // 放在 model_plaza_enabled 之前,避免先跳 /dashboard 再二次重定向到 /login
+      if (appStore.backendModeEnabled && authStore.isAuthenticated && !authStore.isAdmin) {
+        next('/login')
+        return
       }
       const plazaSettings = appStore.cachedPublicSettings
       // 仅在设置成功加载且明确为 false 时拦截(瞬时加载失败视为未知,由后端 404 兜底)
@@ -914,11 +920,6 @@ router.beforeEach(async (to, _from, next) => {
       }
       if (plazaSettings?.model_plaza_require_auth === true && !authStore.isAuthenticated) {
         next({ path: '/login', query: { redirect: to.fullPath } })
-        return
-      }
-      // Backend mode:登录的非管理员也不可见(匿名由下方公共拦截处理,广场不在白名单)
-      if (appStore.backendModeEnabled && authStore.isAuthenticated && !authStore.isAdmin) {
-        next('/login')
         return
       }
     }

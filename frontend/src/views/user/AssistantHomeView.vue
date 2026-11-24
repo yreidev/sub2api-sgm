@@ -15,6 +15,7 @@
 import { computed, defineAsyncComponent, onBeforeMount, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createElement } from 'react'
+import { useMediaQuery } from '@vueuse/core'
 import { useReactHost } from '@/components/hero/useReactHost'
 import { AssistantOverview } from '@/components/assistant/AssistantOverview'
 import '@fontsource/ibm-plex-sans/latin-400.css'
@@ -30,6 +31,7 @@ import { assistantPaymentStorageKey, readPaymentRecoverySnapshot } from '@/compo
 import { useAuthStore, useAppStore } from '@/stores'
 import { formatCurrency } from '@/utils/format'
 import { sanitizeUrl } from '@/utils/url'
+import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 
 const PaymentView = defineAsyncComponent(() => import('./PaymentView.vue'))
 const { t } = useI18n()
@@ -76,12 +78,19 @@ const refreshing = ref(false)
 const rechargeOpen = ref(false)
 const paymentStarted = ref(false)
 
+const showModelPlaza = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
+const isMobileNav = useMediaQuery('(max-width: 639px)')
+
 const overviewHost = useReactHost(() => {
   if (!user.value) return null
   return createElement(AssistantOverview, {
     title: t('dashboard.assistantSetup.homeTitle'),
     siteName: appStore.siteName,
     siteLogo: siteLogo.value,
+    modelPlazaLabel: t('nav.modelPlaza'),
+    modelPlazaHref: '/model-plaza',
+    showMobileModelPlaza: showModelPlaza.value && isMobileNav.value,
+    openModelPlaza: showModelPlaza.value ? () => { void router.push('/model-plaza') } : undefined,
     accountLabel: t('nav.myAccount'),
     adminLabel: t('dashboard.assistantSetup.backToAdmin'),
     logoutLabel: t('nav.logout'),

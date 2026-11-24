@@ -24,27 +24,27 @@
         >
           <div
             v-if="adoptionRequired && (suggestedDisplayName || suggestedAvatarUrl)"
-            class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60"
+            class="auth-subpanel"
           >
             <div class="space-y-3">
               <div class="space-y-1">
-                <p class="text-sm font-medium text-gray-900 dark:text-white">
+                <p class="auth-text text-sm font-medium">
                   {{ t('auth.oauthFlow.profileDetailsTitle', { providerName }) }}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-dark-400">
+                <p class="auth-muted text-xs">
                   {{ t('auth.oauthFlow.profileDetailsDescription', { providerName }) }}
                 </p>
               </div>
 
               <HeroCheckbox
                 v-if="suggestedDisplayName"
-                class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-dark-600 dark:bg-dark-900/50"
+                class="auth-option-card"
                v-model="adoptDisplayName">
                 <span class="space-y-1">
-                  <span class="block font-medium text-gray-900 dark:text-white">
+                  <span class="auth-text block font-medium">
                     {{ t('auth.oauthFlow.useDisplayName') }}
                   </span>
-                  <span class="block text-gray-500 dark:text-dark-400">
+                  <span class="auth-muted block">
                     {{ suggestedDisplayName }}
                   </span>
                 </span>
@@ -52,18 +52,18 @@
 
               <HeroCheckbox
                 v-if="suggestedAvatarUrl"
-                class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm dark:border-dark-600 dark:bg-dark-900/50"
+                class="auth-option-card"
                v-model="adoptAvatar">
                 <img
                   :src="suggestedAvatarUrl"
                   :alt="t('auth.oauthFlow.avatarAlt', { providerName })"
-                  class="h-10 w-10 rounded-full border border-gray-200 object-cover dark:border-dark-600"
+                  class="auth-avatar h-10 w-10 rounded-full object-cover"
                 />
                 <span class="space-y-1">
-                  <span class="block font-medium text-gray-900 dark:text-white">
+                  <span class="auth-text block font-medium">
                     {{ t('auth.oauthFlow.useAvatar') }}
                   </span>
-                  <span class="block break-all text-gray-500 dark:text-dark-400">
+                  <span class="auth-muted block break-all">
                     {{ suggestedAvatarUrl }}
                   </span>
                 </span>
@@ -72,7 +72,7 @@
           </div>
 
           <template v-if="needsInvitation">
-            <p class="text-sm text-gray-700 dark:text-gray-300">
+            <p class="auth-muted text-sm">
               {{ t('auth.dingtalk.invitationRequired') }}
             </p>
             <div>
@@ -95,7 +95,7 @@
           </template>
 
           <template v-else-if="needsAdoptionConfirmation">
-            <p class="text-sm text-gray-700 dark:text-gray-300">
+            <p class="auth-muted text-sm">
               {{ t('auth.oauthFlow.reviewProfileBeforeContinue', { providerName }) }}
             </p>
             <HeroButton variant="primary" full-width class="btn btn-primary" :disabled="isSubmitting" @press="handleContinueLogin">
@@ -104,13 +104,13 @@
           </template>
 
           <template v-else-if="needsChooser">
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-800/60">
+            <div class="auth-subpanel">
               <div class="space-y-4">
                 <div class="space-y-1">
-                  <p class="text-sm font-medium text-gray-900 dark:text-white">
+                  <p class="auth-text text-sm font-medium">
                     {{ t('auth.oauthFlow.chooseHowToContinue') }}
                   </p>
-                  <p class="text-xs text-gray-500 dark:text-dark-400">
+                  <p class="auth-muted text-xs">
                     {{
                       pendingAccountEmail
                         ? t('auth.oauthFlow.suggestedEmail', { email: pendingAccountEmail })
@@ -140,7 +140,7 @@
           </template>
 
           <template v-else-if="needsCreateAccount">
-            <p class="text-sm text-gray-700 dark:text-gray-300">
+            <p class="auth-muted text-sm">
               {{ t('auth.oauthFlow.createAccountHint') }}
             </p>
             <PendingOAuthCreateAccountForm
@@ -154,7 +154,7 @@
           </template>
 
           <template v-else-if="needsBindLogin">
-            <p class="text-sm text-gray-700 dark:text-gray-300">
+            <p class="auth-muted text-sm">
               {{ t('auth.oauthFlow.bindLoginHint', { providerName }) }}
             </p>
             <div class="space-y-3">
@@ -196,7 +196,7 @@
           </template>
 
           <template v-else-if="needsTotpChallenge">
-            <p class="text-sm text-gray-700 dark:text-gray-300">
+            <p class="auth-muted text-sm">
               {{
                 t('auth.oauthFlow.totpHint', {
                   providerName,
@@ -211,7 +211,7 @@
                 type="text"
                 inputmode="numeric"
                 maxlength="6"
-                class="input w-full"
+                class="input w-full font-mono tabular-nums tracking-[0.2em]"
                 placeholder="123456"
                 :disabled="isSubmitting"
                 @keyup.enter="handleSubmitTotpChallenge"
@@ -849,12 +849,24 @@ onMounted(async () => {
 <style scoped>
 .fade-enter-active,
 .fade-leave-active {
-  transition: all 0.3s ease;
+  transition: all var(--duration-base, 220ms) var(--ease-out, ease);
 }
 
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    transform: none;
+  }
 }
 </style>

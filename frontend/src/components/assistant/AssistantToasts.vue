@@ -12,7 +12,7 @@ const appStore = useAppStore()
 const queue = new ToastQueue()
 const keys = new Map<string, string>()
 const variants = { error: 'danger', info: 'accent', success: 'success', warning: 'warning' } as const
-const host = useReactHost(() => createElement(Toast.Provider, { queue, className: 'public-palette', placement: 'bottom', width: 'min(26rem, calc(100vw - 2rem))' }))
+const host = useReactHost(() => createElement(Toast.Provider, { queue, className: 'public-palette sgm-toast-region', placement: 'bottom', width: 'min(26rem, calc(100vw - 2rem))' }))
 
 // The store owns notification lifetimes across route changes.
 watch(() => [...appStore.toasts], (items) => {

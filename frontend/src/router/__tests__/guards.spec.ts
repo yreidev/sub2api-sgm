@@ -55,6 +55,8 @@ interface MockAuthState {
   backendModeEnabled: boolean
   hasPendingAuthSession: boolean
   setupNeedsSetup?: boolean
+  modelPlazaEnabled?: boolean
+  modelPlazaRequireAuth?: boolean
 }
 
 /**
@@ -74,7 +76,7 @@ function simulateGuard(
 
   if (authState.isAuthenticated && !authState.isAdmin && (
     (requiresAuth && !['/dashboard', '/oauth/mcp/authorize'].includes(toPath)) ||
-    ['/home', '/setup', '/model-plaza', '/key-usage'].includes(toPath)
+    ['/home', '/setup', '/key-usage'].includes(toPath)
   )) {
     return authState.backendModeEnabled ? '/login' : '/dashboard'
   }
@@ -89,6 +91,21 @@ function simulateGuard(
         return null
       }
       return authState.isAdmin ? '/admin/dashboard' : '/dashboard'
+    }
+    if (toPath === '/model-plaza' || toPath === '/model-plaza/') {
+      if (authState.backendModeEnabled && authState.isAuthenticated && !authState.isAdmin) {
+        return '/login'
+      }
+      if (authState.modelPlazaEnabled === false) {
+        return authState.isAuthenticated
+          ? authState.isAdmin
+            ? '/admin/dashboard'
+            : '/dashboard'
+          : '/home'
+      }
+      if (authState.modelPlazaRequireAuth === true && !authState.isAuthenticated) {
+        return '/login'
+      }
     }
     if (authState.backendModeEnabled && !authState.isAuthenticated) {
       const allowed = ['/login', '/key-usage', '/setup', '/payment/result']
@@ -534,6 +551,57 @@ describe('路由守卫逻辑', () => {
       }
       const redirect = simulateGuard('/email-verify', { requiresAuth: false }, authState)
       expect(redirect).toBe('/login')
+    })
+
+    it.each(['/model-plaza', '/model-plaza/'])('non-admin authenticated: %s redirects to /login', (path) => {
+      const authState: MockAuthState = {
+        isAuthenticated: true,
+        isAdmin: false,
+        isSimpleMode: false,
+        backendModeEnabled: true,
+        hasPendingAuthSession: false,
+        modelPlazaEnabled: true,
+      }
+      expect(simulateGuard(path, { requiresAuth: false }, authState)).toBe('/login')
+    })
+
+    it.each(['/model-plaza', '/model-plaza/'])(
+      'non-admin authenticated: %s redirects straight to /login even when disabled',
+      (path) => {
+        const authState: MockAuthState = {
+          isAuthenticated: true,
+          isAdmin: false,
+          isSimpleMode: false,
+          backendModeEnabled: true,
+          hasPendingAuthSession: false,
+          modelPlazaEnabled: false,
+        }
+        expect(simulateGuard(path, { requiresAuth: false }, authState)).toBe('/login')
+      }
+    )
+
+    it.each(['/model-plaza', '/model-plaza/'])('unauthenticated: %s redirects to /login', (path) => {
+      const authState: MockAuthState = {
+        isAuthenticated: false,
+        isAdmin: false,
+        isSimpleMode: false,
+        backendModeEnabled: true,
+        hasPendingAuthSession: false,
+        modelPlazaEnabled: true,
+      }
+      expect(simulateGuard(path, { requiresAuth: false }, authState)).toBe('/login')
+    })
+
+    it.each(['/model-plaza', '/model-plaza/'])('admin: %s is allowed', (path) => {
+      const authState: MockAuthState = {
+        isAuthenticated: true,
+        isAdmin: true,
+        isSimpleMode: false,
+        backendModeEnabled: true,
+        hasPendingAuthSession: false,
+        modelPlazaEnabled: true,
+      }
+      expect(simulateGuard(path, { requiresAuth: false }, authState)).toBeNull()
     })
   })
 })

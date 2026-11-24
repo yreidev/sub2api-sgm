@@ -1,39 +1,41 @@
 <template>
   <DataTable :columns="columns" :data="orders" :loading="loading">
     <template #cell-id="{ value }">
-      <span class="font-mono text-sm">#{{ value }}</span>
+      <span class="font-mono text-sm tabular-nums text-gray-600 dark:text-dark-300">#{{ value }}</span>
     </template>
     <template #cell-out_trade_no="{ value }">
-      <span class="text-sm text-gray-900 dark:text-white">{{ value }}</span>
+      <span class="font-mono text-xs tabular-nums text-gray-900 sm:text-sm dark:text-white">{{ value }}</span>
     </template>
     <template v-if="showUser" #cell-user_email="{ value, row }">
       <div class="text-sm">
-        <span class="text-gray-900 dark:text-white">{{ value || row.user_name || '#' + row.user_id }}</span>
-        <span v-if="row.user_notes" class="ml-1 text-xs text-gray-400">({{ row.user_notes }})</span>
+        <span class="font-medium text-gray-900 dark:text-white">{{ value || row.user_name || '#' + row.user_id }}</span>
+        <span v-if="row.user_notes" class="ml-1 text-xs text-gray-500 dark:text-dark-400">({{ row.user_notes }})</span>
       </div>
     </template>
     <template #cell-pay_amount="{ value, row }">
-      <div class="text-sm">
-        <span class="font-medium text-gray-900 dark:text-white">{{ paymentAmountSymbol(row) }}{{ value.toFixed(2) }}</span>
-        <span v-if="row.fee_rate > 0" class="ml-1 text-xs text-gray-400" :title="t('payment.orders.fee') + ': ' + row.fee_rate + '%'">
+      <div class="text-sm tabular-nums">
+        <span class="font-semibold text-gray-900 dark:text-white">{{ paymentAmountSymbol(row) }}{{ value.toFixed(2) }}</span>
+        <span v-if="row.fee_rate > 0" class="ml-1 text-xs text-gray-500 dark:text-dark-400" :title="t('payment.orders.fee') + ': ' + row.fee_rate + '%'">
           ({{ t('payment.orders.fee') }} {{ row.fee_rate }}%)
         </span>
-        <div v-if="row.amount !== row.pay_amount || (row.bonus_amount ?? 0) > 0" class="text-xs text-gray-500">
+        <div v-if="row.amount !== row.pay_amount || (row.bonus_amount ?? 0) > 0" class="mt-0.5 text-xs text-gray-500 dark:text-dark-400">
           {{ t('payment.orders.creditedAmount') }}: {{ creditedAmountSymbol }}{{ row.amount.toFixed(2) }}
-          <span v-if="(row.bonus_amount ?? 0) > 0" class="ml-1 text-amber-600 dark:text-amber-400">
+          <span v-if="(row.bonus_amount ?? 0) > 0" class="ml-1 font-medium text-amber-700 dark:text-amber-400">
             ({{ t('payment.orders.bonusIncluded', { amount: creditedAmountSymbol + (row.bonus_amount ?? 0).toFixed(2) }) }})
           </span>
         </div>
       </div>
     </template>
     <template #cell-payment_type="{ value }">
-      <span class="text-sm text-gray-700 dark:text-gray-300">{{ t('payment.methods.' + value, value) }}</span>
+      <span class="inline-flex items-center rounded-md bg-gray-100/80 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-500/10 dark:bg-dark-700/70 dark:text-gray-200 dark:ring-white/10">
+        {{ t('payment.methods.' + value, value) }}
+      </span>
     </template>
     <template #cell-status="{ row }">
       <OrderStatusBadge :status="row.status" :paid-at="row.paid_at" />
     </template>
     <template #cell-created_at="{ value }">
-      <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(value) }}</span>
+      <span class="text-xs tabular-nums text-gray-500 dark:text-dark-400">{{ formatDate(value) }}</span>
     </template>
     <template #cell-actions="{ row }">
       <slot name="actions" :row="row" />

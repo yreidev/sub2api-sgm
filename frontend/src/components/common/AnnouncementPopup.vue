@@ -1,11 +1,32 @@
 <template>
-  <HeroModal v-if="hero && displayedAnnouncement" :label="displayedAnnouncement.title">
-    <h2 class="text-xl font-semibold">{{ displayedAnnouncement.title }}</h2>
-    <time class="text-sm">{{ formatRelativeWithDateTime(displayedAnnouncement.created_at) }}</time>
-    <div class="markdown-body prose prose-sm my-4 max-w-none dark:prose-invert" v-html="renderedContent"></div>
-    <HeroButton variant="primary" data-testid="announcement-popup-dismiss" @press="handleDismiss">
-      {{ t('announcements.markRead') }}
-    </HeroButton>
+  <HeroModal
+    v-if="hero && displayedAnnouncement"
+    :label="displayedAnnouncement.title"
+    dialog-class="sgm-announcement-modal"
+  >
+    <div class="sgm-announcement">
+      <header class="sgm-announcement-header">
+        <div class="sgm-announcement-badge">
+          <span class="sgm-announcement-dot" aria-hidden="true"></span>
+          <span>{{ t('announcements.unread') }}</span>
+        </div>
+        <h2 class="sgm-announcement-title">{{ displayedAnnouncement.title }}</h2>
+        <time class="sgm-announcement-time">{{ formatRelativeWithDateTime(displayedAnnouncement.created_at) }}</time>
+      </header>
+      <div class="sgm-announcement-body">
+        <div class="markdown-body prose prose-sm max-w-none dark:prose-invert" v-html="renderedContent"></div>
+      </div>
+      <footer class="sgm-announcement-footer">
+        <HeroButton
+          variant="primary"
+          class="sgm-announcement-action"
+          data-testid="announcement-popup-dismiss"
+          @press="handleDismiss"
+        >
+          {{ preview ? t('common.close') : t('announcements.markRead') }}
+        </HeroButton>
+      </footer>
+    </div>
   </HeroModal>
   <Teleport v-if="!hero" to="body">
     <Transition name="popup-fade">

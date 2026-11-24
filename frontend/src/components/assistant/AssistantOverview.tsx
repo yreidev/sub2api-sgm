@@ -1,11 +1,15 @@
 import { Button, Card, Dropdown, Label, Modal, Surface, Typography } from '@heroui/react'
-import { ChevronDown, CircleUserRound, Plus, RefreshCw, Wallet, X } from 'lucide-react'
-import type { Ref } from 'react'
+import { ArrowLeft, ChevronDown, CircleUserRound, LayoutGrid, LogOut, Plus, RefreshCw, Wallet, X } from 'lucide-react'
+import type { MouseEvent, Ref } from 'react'
 
 interface OverviewProps {
   title: string
   siteName: string
   siteLogo: string
+  modelPlazaLabel?: string
+  modelPlazaHref?: string
+  showMobileModelPlaza?: boolean
+  openModelPlaza?: () => void
   accountLabel: string
   adminLabel: string
   logoutLabel: string
@@ -28,6 +32,14 @@ interface OverviewProps {
 }
 
 export function AssistantOverview(props: OverviewProps) {
+  function handleModelPlazaClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (!props.openModelPlaza || event.defaultPrevented) return
+    if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault()
+      props.openModelPlaza()
+    }
+  }
+
   return (
     <Surface className="sgm-assistant-overview sgm-workspace">
       <header className="sgm-assistant-header">
@@ -36,17 +48,42 @@ export function AssistantOverview(props: OverviewProps) {
             <img alt="" src={props.siteLogo} />
             <span>{props.siteName}</span>
           </div>
-          <Dropdown>
-            <Button className="sgm-account-button" variant="ghost">
-              <CircleUserRound aria-hidden="true" />{props.accountLabel}<ChevronDown aria-hidden="true" />
-            </Button>
-            <Dropdown.Popover className="sgm-assistant-menu" placement="bottom end">
-              <Dropdown.Menu>
-                {props.openAdmin && <Dropdown.Item id="admin" onAction={props.openAdmin}><Label>{props.adminLabel}</Label></Dropdown.Item>}
-                <Dropdown.Item id="logout" onAction={props.logout}><Label>{props.logoutLabel}</Label></Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown>
+          <nav className="sgm-nav-actions" aria-label={props.siteName}>
+            {props.openModelPlaza && props.modelPlazaLabel && (
+              <a
+                href={props.modelPlazaHref || '/model-plaza'}
+                className="sgm-nav-link"
+                onClick={handleModelPlazaClick}
+              >
+                <LayoutGrid aria-hidden="true" />{props.modelPlazaLabel}
+              </a>
+            )}
+            <Dropdown>
+              <Button className="sgm-account-button" variant="ghost">
+                <CircleUserRound aria-hidden="true" />{props.accountLabel}<ChevronDown aria-hidden="true" />
+              </Button>
+              <Dropdown.Popover className="sgm-assistant-menu" placement="bottom end">
+                <Dropdown.Menu>
+                  {props.showMobileModelPlaza && props.openModelPlaza && props.modelPlazaLabel && (
+                    <Dropdown.Item id="model-plaza" onAction={props.openModelPlaza}>
+                      <LayoutGrid aria-hidden="true" />
+                      <Label>{props.modelPlazaLabel}</Label>
+                    </Dropdown.Item>
+                  )}
+                  {props.openAdmin && (
+                    <Dropdown.Item id="admin" onAction={props.openAdmin}>
+                      <ArrowLeft aria-hidden="true" />
+                      <Label>{props.adminLabel}</Label>
+                    </Dropdown.Item>
+                  )}
+                  <Dropdown.Item id="logout" onAction={props.logout}>
+                    <LogOut aria-hidden="true" />
+                    <Label>{props.logoutLabel}</Label>
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown>
+          </nav>
         </div>
       </header>
       <main className="sgm-page-width sgm-dashboard">
@@ -65,7 +102,7 @@ export function AssistantOverview(props: OverviewProps) {
                 <Plus aria-hidden="true" />{props.rechargeLabel}
               </Button>
             ) : props.contactAdmin && <p>{props.contactAdmin}</p>}
-            <Button variant="ghost" isPending={props.refreshing} onPress={props.refreshBalance}>
+            <Button className="sgm-refresh-action" variant="ghost" isPending={props.refreshing} onPress={props.refreshBalance}>
               <RefreshCw aria-hidden="true" />{props.refreshLabel}
             </Button>
           </Card.Footer>
@@ -80,7 +117,7 @@ export function AssistantOverview(props: OverviewProps) {
           <Modal.Dialog className="sgm-assistant-overview sgm-recharge-dialog" id="assistant-recharge">
             <Modal.Header>
               <Modal.Heading><Wallet aria-hidden="true" />{props.rechargeLabel}</Modal.Heading>
-              <Button slot="close" size="sm" variant="ghost" className="!min-h-11" aria-label={props.closeLabel}><X aria-hidden="true" />{props.closeLabel}</Button>
+              <Button slot="close" size="sm" variant="ghost" className="sgm-modal-close !min-h-11" aria-label={props.closeLabel}><X aria-hidden="true" />{props.closeLabel}</Button>
             </Modal.Header>
             <Modal.Body><div ref={props.paymentHost} /></Modal.Body>
           </Modal.Dialog>

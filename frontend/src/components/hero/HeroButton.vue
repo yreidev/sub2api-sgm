@@ -13,6 +13,7 @@ defineOptions({ inheritAttrs: false })
 const props = withDefaults(defineProps<{
   type?: 'button' | 'submit' | 'reset'
   variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger'
+  size?: 'sm' | 'md' | 'lg'
   disabled?: boolean
   iconOnly?: boolean
   fullWidth?: boolean
@@ -26,7 +27,7 @@ const host = useReactHost(() => {
   const { class: className, style: _style, ...rest } = attrs
   return createElement(Button, {
     ...rest, ...(scopeId && { [scopeId]: '' }), className: className as string,
-    type: props.type, variant: props.variant, isDisabled: props.disabled,
+    type: props.type, variant: props.variant, ...(props.size && { size: props.size }), isDisabled: props.disabled,
     isIconOnly: props.iconOnly, fullWidth: props.fullWidth, onPress: () => emit('press'), ref: setButton,
   })
 }, true)
