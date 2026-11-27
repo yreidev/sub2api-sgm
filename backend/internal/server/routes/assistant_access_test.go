@@ -105,7 +105,7 @@ func TestAssistantConsoleAccess(t *testing.T) {
 		nil,
 	)
 	h.APIKey = handler.NewAPIKeyHandler(keys)
-	h.Usage = handler.NewUsageHandler(nil, keys, nil, nil)
+	h.Usage = handler.NewUsageHandler(nil, keys, nil, nil, nil)
 	h.ModelPlaza = handler.NewModelPlazaHandler(
 		service.NewModelPlazaService(assistantPlazaChannelRepo{}, assistantPlazaGroupRepo{}, nil, nil, nil),
 		keys,
